@@ -1,17 +1,44 @@
-
 import { GoogleGenAI, Type, Content, GenerateContentResponse, Modality, Chat, GenerateImagesResponse } from "@google/genai";
 import C from '../constants';
 import { ApiResponse, PlayerStats, Neighborhood, Business, Tombstone, Building, NotableNPC, Property, Job, GameProject, Technology, PlayerProfile, Relationship, Task, JobOffer, UniversityCourse, ShopItem } from '../types';
 import { corporateDatabase } from '../data/marketData';
 import { STATIC_JOBS, STATIC_COURSES, STATIC_SHOP_ITEMS } from '../data/staticWorld';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+// --- SAFE ENV ACCESS ---
+// Helper to avoid "process is not defined" crash in browser environments (Vercel/Vite)
+const getApiKey = () => {
+    try {
+        // 1. Try standard Node/CRA process.env
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+            return process.env.API_KEY;
+        }
+        // 2. Try Vite import.meta.env
+        if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_API_KEY) {
+            return (import.meta as any).env.VITE_API_KEY;
+        }
+        // 3. Check for prefixed versions in process.env (React App / Next.js)
+        if (typeof process !== 'undefined' && process.env) {
+            return process.env.REACT_APP_API_KEY || process.env.NEXT_PUBLIC_API_KEY;
+        }
+    } catch (e) {
+        console.warn("Error reading env vars:", e);
+    }
+    return "";
+};
+
+const API_KEY = getApiKey();
+// Initialize safely. If key is missing, AI calls will fail gracefully later, not crash the app on load.
+const ai = new GoogleGenAI({ apiKey: API_KEY || "MISSING_KEY" });
 
 // ============================================================================
 // UTILITIES
 // ============================================================================
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  if (!API_KEY || API_KEY === "MISSING_KEY") {
+      throw new Error("API Key não configurada. Verifique as configurações do Vercel.");
+  }
+
   let attempts = 0;
   while (attempts <= retries) {
     try {
@@ -227,6 +254,11 @@ function normalizeAiStats(rawStats: any): any {
 // ============================================================================
 
 export async function* sendMessageToGameStream(history: Content[], action: string, currentStats: PlayerStats) {
+    if (!API_KEY || API_KEY === "MISSING_KEY") {
+        yield { type: 'text', payload: "⚠️ ERRO DE CONFIGURAÇÃO: API Key não encontrada. Verifique as variáveis de ambiente no Vercel." };
+        return;
+    }
+
     const optimizedState = getOptimizedState(currentStats, action);
     
     const geminiHistory = history.map(h => ({

@@ -28,9 +28,9 @@ export const authService = {
             if (error.message.includes("valid email")) {
                 throw new Error("Por favor, insira um e-mail válido.");
             }
-            // Tratamento para Rate Limit (Excesso de tentativas)
-            if (error.message.includes("rate limit") || error.message.includes("Too many requests")) {
-                throw new Error("Muitas tentativas de registro. Por segurança, aguarde alguns instantes (ou minutos) antes de tentar novamente.");
+            // Tratamento para Rate Limit (Excesso de tentativas de envio de email)
+            if (error.message.includes("rate limit") || error.message.includes("Too many requests") || error.status === 429) {
+                throw new Error("Muitas tentativas de registro recentes. Por segurança, o sistema bloqueou temporariamente. Aguarde alguns minutos e tente novamente.");
             }
             throw new Error("Erro ao criar conta: " + error.message);
         }
@@ -60,7 +60,7 @@ export const authService = {
                 throw new Error("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada (e spam).");
             }
             if (error.message.includes("rate limit") || error.message.includes("Too many requests")) {
-                throw new Error("Muitas tentativas de login. Aguarde um momento.");
+                throw new Error("Muitas tentativas de login. Aguarde um momento antes de tentar de novo.");
             }
             throw new Error("Erro ao fazer login: " + error.message);
         }
@@ -101,7 +101,7 @@ export const authService = {
             id: save.id,
             user_id: userId,
             player_stats: save.playerStats,
-            game_log: save.gameLog,
+            game_log: save.gameLog, // Fixed type error: was save.game_log
             history: [], // Optimization: Don't sync heavy AI history to cloud
             version: save.version
         };
