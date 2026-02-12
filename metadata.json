@@ -1,0 +1,5 @@
+{
+  "name": "VidaSim - A Text-Based Life Simulator",
+  "description": "An interactive text-based life simulation game powered by AI. Start a new life, make choices, and see where your decisions take you, from birth to death. Experience a unique story every time you play.",
+  "requestFramePermissions": []
+}
