@@ -6,6 +6,9 @@ export const authService = {
     // --- AUTHENTICATION ---
 
     register: async (name: string, email: string, password: string): Promise<User> => {
+        // CORREÇÃO CRÍTICA: Pega a URL atual (localhost ou Vercel) dinamicamente
+        const currentUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -13,6 +16,8 @@ export const authService = {
                 data: {
                     name: name,
                 },
+                // Isso diz ao Supabase: "Mande o usuário de volta para este site exato após clicar no email"
+                emailRedirectTo: currentUrl, 
             },
         });
 
@@ -20,7 +25,7 @@ export const authService = {
             console.error("Erro no Registro:", error);
             // Tratamento de erros comuns do Supabase
             if (error.message.includes("User already registered") || error.message.includes("already registered")) {
-                throw new Error("Este e-mail já está cadastrado.");
+                throw new Error("Este e-mail já está cadastrado. Tente fazer login.");
             }
             if (error.message.includes("Password should be")) {
                 throw new Error("A senha deve ter pelo menos 6 caracteres.");
@@ -28,11 +33,22 @@ export const authService = {
             if (error.message.includes("valid email")) {
                 throw new Error("Por favor, insira um e-mail válido.");
             }
-            // Tratamento para Rate Limit (Excesso de tentativas de envio de email)
+            // Tratamento para Rate Limit (Excesso de tentativas)
             if (error.message.includes("rate limit") || error.message.includes("Too many requests") || error.status === 429) {
-                throw new Error("Muitas tentativas de registro recentes. Por segurança, o sistema bloqueou temporariamente. Aguarde alguns minutos e tente novamente.");
+                throw new Error("Muitas tentativas recentes. O sistema bloqueou temporariamente por segurança. Aguarde 15 minutos.");
             }
             throw new Error("Erro ao criar conta: " + error.message);
+        }
+
+        // Se o usuário foi criado, mas não tem sessão, significa que precisa confirmar email
+        if (data.user && !data.session) {
+             // Retornamos um objeto parcial apenas para indicar sucesso, o AuthContext lidará com o aviso
+             return {
+                id: data.user.id,
+                name: name,
+                email: email,
+                createdAt: Date.now()
+             };
         }
 
         if (!data.user) throw new Error("Erro desconhecido ao criar usuário.");
@@ -95,14 +111,12 @@ export const authService = {
     // --- CLOUD STORAGE ---
 
     syncSave: async (userId: string, save: SaveData): Promise<void> => {
-        // Prepare data for SQL (snake_case conversion)
-        // We remove history to save bandwidth/space
         const payload = {
             id: save.id,
             user_id: userId,
             player_stats: save.playerStats,
-            game_log: save.gameLog, // Fixed type error: was save.game_log
-            history: [], // Optimization: Don't sync heavy AI history to cloud
+            game_log: save.gameLog,
+            history: [], 
             version: save.version
         };
 
@@ -127,7 +141,6 @@ export const authService = {
             throw new Error("Falha ao baixar saves da nuvem.");
         }
 
-        // Map back to TypeScript keys (CamelCase)
         return (data || []).map((row: any) => ({
             id: row.id,
             playerStats: row.player_stats,

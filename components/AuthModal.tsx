@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { XMarkIcon, UserCircleIcon, LockClosedIcon, EnvelopeIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserCircleIcon, LockClosedIcon, EnvelopeIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 
@@ -33,22 +33,46 @@ function AuthModal({ onClose }: AuthModalProps): React.ReactElement {
                 if (!name) throw new Error("Nome é obrigatório.");
                 await register(name, email, password);
                 
-                // Verifica se o usuário já está logado (confirmação de email desligada) ou não
                 const { data } = await supabase.auth.getSession();
                 if (data.session) {
-                    onClose(); // Logado com sucesso
+                    onClose(); 
                 } else {
-                    // Usuário criado mas sem sessão -> Confirmação de email necessária
-                    setSuccessMsg("Conta criada! Se necessário, verifique seu e-mail para confirmar o cadastro antes de entrar.");
-                    setMode('login'); // Muda para login para ele entrar após confirmar
+                    // Mensagem mais robusta e amigável
+                    setSuccessMsg("Conta criada com sucesso!");
+                    setMode('login'); 
                 }
             }
         } catch (err: any) {
-            setError(err.message || "Ocorreu um erro.");
+            setError(err.message || "Ocorreu um erro inesperado.");
         } finally {
             setLoading(false);
         }
     };
+
+    // Tela de Sucesso Específica (Confirmação de Email)
+    if (successMsg && mode === 'login' && !loading) {
+        return (
+            <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in-up">
+                <div className="bg-gray-900 border border-green-500/30 rounded-3xl shadow-[0_0_50px_rgba(34,197,94,0.15)] w-full max-w-md overflow-hidden relative p-8 text-center">
+                    <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                        <CheckCircleIcon className="w-8 h-8 text-green-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Verifique seu E-mail</h2>
+                    <p className="text-gray-300 mb-6">
+                        Enviamos um link de confirmação para <strong>{email}</strong>.
+                        <br/><br/>
+                        Clique no link para ativar sua conta e começar a jogar. Lembre-se de checar a caixa de <strong>Spam</strong>.
+                    </p>
+                    <button 
+                        onClick={() => setSuccessMsg(null)}
+                        className="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-colors border border-gray-700"
+                    >
+                        Voltar para Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div 
@@ -77,15 +101,10 @@ function AuthModal({ onClose }: AuthModalProps): React.ReactElement {
                         </button>
                     </div>
 
-                    {successMsg && (
-                        <div className="bg-green-500/10 border border-green-500/30 text-green-200 text-sm p-3 rounded-xl mb-6 font-bold">
-                            {successMsg}
-                        </div>
-                    )}
-
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/30 text-red-200 text-sm p-3 rounded-xl mb-6">
-                            {error}
+                        <div className="bg-red-500/10 border border-red-500/30 text-red-200 text-sm p-4 rounded-xl mb-6 flex items-start gap-3">
+                            <ExclamationTriangleIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <span>{error}</span>
                         </div>
                     )}
 
