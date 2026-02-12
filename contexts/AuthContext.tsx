@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, SaveData } from '../types';
 import { authService } from '../services/authService';
 import { storageService } from '../services/storageService';
+import { supabase } from '../supabaseClient';
 
 interface AuthContextType {
     user: User | null;
@@ -21,25 +22,44 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
 
+    // Initialize Session
     useEffect(() => {
-        const storedUser = authService.getCurrentUser();
-        if (storedUser) setUser(storedUser);
+        // Check active session on load
+        authService.getUserSession().then(sessionUser => {
+            setUser(sessionUser);
+        });
+
+        // Listen for auth changes (e.g. token refresh, logout in another tab)
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                setUser({
+                    id: session.user.id,
+                    name: session.user.user_metadata.name || "Jogador",
+                    email: session.user.email || "",
+                    createdAt: new Date(session.user.created_at).getTime()
+                });
+            } else {
+                setUser(null);
+            }
+        });
+
+        return () => {
+            authListener.subscription.unsubscribe();
+        };
     }, []);
 
     const login = useCallback(async (email: string, pass: string) => {
         const loggedUser = await authService.login(email, pass);
-        setUser(loggedUser);
-        // Auto-sync on login can be added here if desired
+        // User state will be updated by onAuthStateChange
     }, []);
 
     const register = useCallback(async (name: string, email: string, pass: string) => {
-        const newUser = await authService.register(name, email, pass);
-        setUser(newUser);
+        await authService.register(name, email, pass);
+        // User state will be updated by onAuthStateChange
     }, []);
 
     const logout = useCallback(async () => {
         await authService.logout();
-        setUser(null);
     }, []);
 
     const syncSaves = useCallback(async () => {
@@ -53,18 +73,20 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
             const localSaves = storageService.getSaves();
 
             // 3. Merge Logic (Cloud wins if newer or if local missing)
-            // Ideally we check timestamps, but for simplicity we'll just merge unique IDs
-            // and prefer Cloud for conflicts in this "Restore" action.
-            
             const mergedMap = new Map<string, SaveData>();
+            
+            // First load locals
             localSaves.forEach(s => mergedMap.set(s.id, s));
-            cloudSaves.forEach(s => mergedMap.set(s.id, s)); // Cloud overwrites local in simple sync
+            
+            // Then overwrite with cloud (assuming cloud is source of truth for Restore action)
+            cloudSaves.forEach(s => mergedMap.set(s.id, s)); 
 
             const mergedList = Array.from(mergedMap.values());
             storageService.saveAll(mergedList);
             
         } catch (e) {
             console.error("Sync failed", e);
+            alert("Erro ao sincronizar com a nuvem.");
         } finally {
             setIsSyncing(false);
         }
@@ -72,7 +94,6 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
 
     const uploadSave = useCallback(async (save: SaveData) => {
         if (!user) return;
-        // Don't set global isSyncing to avoid UI lock, just background push
         try {
             await authService.syncSave(user.id, save);
         } catch (e) {

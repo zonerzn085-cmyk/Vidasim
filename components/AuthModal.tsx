@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, UserCircleIcon, LockClosedIcon, EnvelopeIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../supabaseClient';
 
 interface AuthModalProps {
     onClose: () => void;
@@ -12,6 +13,7 @@ function AuthModal({ onClose }: AuthModalProps): React.ReactElement {
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -20,16 +22,27 @@ function AuthModal({ onClose }: AuthModalProps): React.ReactElement {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setSuccessMsg(null);
         setLoading(true);
 
         try {
             if (mode === 'login') {
                 await login(email, password);
+                onClose();
             } else {
                 if (!name) throw new Error("Nome é obrigatório.");
                 await register(name, email, password);
+                
+                // Verifica se o usuário já está logado (confirmação de email desligada) ou não
+                const { data } = await supabase.auth.getSession();
+                if (data.session) {
+                    onClose(); // Logado com sucesso
+                } else {
+                    // Usuário criado mas sem sessão -> Confirmação de email necessária
+                    setSuccessMsg("Conta criada! Se necessário, verifique seu e-mail para confirmar o cadastro antes de entrar.");
+                    setMode('login'); // Muda para login para ele entrar após confirmar
+                }
             }
-            onClose();
         } catch (err: any) {
             setError(err.message || "Ocorreu um erro.");
         } finally {
@@ -63,6 +76,12 @@ function AuthModal({ onClose }: AuthModalProps): React.ReactElement {
                             <XMarkIcon className="w-6 h-6" />
                         </button>
                     </div>
+
+                    {successMsg && (
+                        <div className="bg-green-500/10 border border-green-500/30 text-green-200 text-sm p-3 rounded-xl mb-6 font-bold">
+                            {successMsg}
+                        </div>
+                    )}
 
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/30 text-red-200 text-sm p-3 rounded-xl mb-6">
@@ -126,7 +145,7 @@ function AuthModal({ onClose }: AuthModalProps): React.ReactElement {
                         <p className="text-gray-500 text-sm">
                             {mode === 'login' ? 'Não tem uma conta?' : 'Já tem uma conta?'}
                             <button 
-                                onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                                onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); setSuccessMsg(null); }}
                                 className="ml-2 text-teal-400 hover:text-teal-300 font-bold hover:underline transition-all"
                             >
                                 {mode === 'login' ? 'Crie agora' : 'Faça login'}
