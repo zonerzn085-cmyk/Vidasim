@@ -27,8 +27,6 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
   const { user, isAuthenticated, logout, syncSaves, uploadSave, isSyncing } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   
-  // Sort saves by last played (conceptually, assuming the array order or adding a timestamp later. For now, simple reverse or as-is)
-  // Here we just grab the first one as "Most Recent" for the UI demo if available
   const mostRecentSave = savedLives.length > 0 ? savedLives[savedLives.length - 1] : null;
   const otherSaves = savedLives.length > 0 ? savedLives.slice(0, -1).reverse() : [];
 
@@ -102,16 +100,10 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
       window.location.reload(); 
   };
 
+  // Performance Optimization: Removed bg-gray-950 to allow LayoutBackground to show through without overdraw
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col relative overflow-x-hidden font-sans selection:bg-teal-500/30">
+    <div className="min-h-screen bg-transparent text-gray-100 flex flex-col relative overflow-x-hidden font-sans selection:bg-teal-500/30">
       <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileImport} />
-
-      {/* Decorative Background */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-teal-900/10 rounded-full blur-[120px]"></div>
-          <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[100px]"></div>
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02]"></div>
-      </div>
 
       {/* Top Navigation */}
       <nav className="relative z-20 flex justify-between items-center px-6 py-6 lg:px-12">
@@ -179,8 +171,8 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Create New / Quick Start Block */}
             <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onClick={onNewGame} className="group relative h-64 md:h-80 bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 flex flex-col justify-between overflow-hidden border border-gray-700 hover:border-teal-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-teal-900/20">
-                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity duration-500 transform group-hover:scale-110">
+                <button onClick={onNewGame} className="group relative h-64 md:h-80 bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 flex flex-col justify-between overflow-hidden border border-gray-700 hover:border-teal-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-teal-900/20">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity duration-300">
                         <PlusIcon className="w-40 h-40 text-teal-400" />
                     </div>
                     <div className="z-10">
@@ -203,7 +195,7 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
                     </button>
                     
                     <button onClick={handleLoadLegendary} className="flex-1 bg-gradient-to-br from-yellow-900/20 to-amber-900/20 border border-yellow-600/30 hover:border-yellow-500 hover:bg-yellow-900/40 rounded-3xl p-6 flex items-center gap-4 transition-all group">
-                        <div className="p-3 bg-yellow-500/20 rounded-xl text-yellow-400 group-hover:scale-110 transition-transform">
+                        <div className="p-3 bg-yellow-500/20 rounded-xl text-yellow-400">
                             <TrophyIcon className="w-8 h-8" />
                         </div>
                         <div className="text-left">
