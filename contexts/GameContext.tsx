@@ -141,17 +141,26 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
             version: C.CURRENT_SAVE_VERSION,
         };
         
+        // 1. Local Save (Synchronous-ish)
         const success = storageService.saveLife(newSaveData);
-        
-        if (isAuthenticated) {
-            const cloudSave = { ...newSaveData, history: [] }; 
-            uploadSave(cloudSave).catch(err => console.error("Cloud Auto-save failed", err));
-        }
-        
         if (success) {
             setSavedLives(storageService.getSaves());
+        }
+
+        // 2. Cloud Save (Immediate but Async)
+        // We do NOT wait for cloud save to finish before showing UI feedback to keep game snappy,
+        // but we trigger it immediately.
+        if (isAuthenticated) {
+            // Trim heavy history for cloud to avoid payload limits
+            const cloudSave = { ...newSaveData, history: [] }; 
+            // Fire and forget (handled by AuthContext with internal error logging)
+            uploadSave(cloudSave); 
+        }
+        
+        // UI Feedback
+        if (success) {
             if (!isAutoSave) {
-                setSaveMessage('Salvo!');
+                setSaveMessage(isAuthenticated ? 'Salvo na Nuvem!' : 'Salvo (Local)!');
                 setTimeout(() => setSaveMessage(''), 2000);
             } else {
                 setTimeout(() => setSaveMessage(''), 1000);

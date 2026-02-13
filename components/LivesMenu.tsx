@@ -1,11 +1,12 @@
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { SaveData } from '../types';
-import { UserIcon, BriefcaseIcon, BanknotesIcon, TrashIcon, ArrowRightIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, XMarkIcon, SparklesIcon, TrophyIcon, PlusIcon, BoltIcon, CloudArrowUpIcon, ArrowPathIcon, PlayIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { UserIcon, BriefcaseIcon, BanknotesIcon, TrashIcon, ArrowRightIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, XMarkIcon, SparklesIcon, TrophyIcon, PlusIcon, BoltIcon, CloudArrowUpIcon, ArrowPathIcon, PlayIcon, ClockIcon, NewspaperIcon } from '@heroicons/react/24/outline';
 import { arthurLegendarySave } from '../data/legendarySave';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
-import GameModeDialog from './GameModeDialog'; // Import new component
+import GameModeDialog from './GameModeDialog';
+import ChangelogModal from './ChangelogModal'; // Import new component
 
 interface LivesMenuProps {
   savedLives: SaveData[];
@@ -27,8 +28,16 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isAuthenticated, logout, syncSaves, uploadSave, isSyncing } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showModeDialog, setShowModeDialog] = useState(false); // State for mode selection
+  const [showModeDialog, setShowModeDialog] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false); // State for changelog
   
+  // Auto-sync on mount if authenticated to prevent save loss
+  useEffect(() => {
+      if (isAuthenticated) {
+          syncSaves();
+      }
+  }, [isAuthenticated]);
+
   const mostRecentSave = savedLives.length > 0 ? savedLives[savedLives.length - 1] : null;
   const otherSaves = savedLives.length > 0 ? savedLives.slice(0, -1).reverse() : [];
 
@@ -102,7 +111,6 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
       window.location.reload(); 
   };
 
-  // Trigger quick start with mode selection
   const handleQuickStartClick = () => {
       setShowModeDialog(true);
   };
@@ -112,7 +120,6 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
       onQuickStart(mode);
   };
 
-  // Performance Optimization: Removed bg-gray-950 to allow LayoutBackground to show through without overdraw
   return (
     <div className="min-h-screen bg-transparent text-gray-100 flex flex-col relative overflow-x-hidden font-sans selection:bg-teal-500/30">
       <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileImport} />
@@ -124,9 +131,19 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
                   <SparklesIcon className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-2xl font-black tracking-tight text-white">Vida<span className="text-teal-400">Sim</span></h1>
+              <div className="ml-2 px-2 py-0.5 bg-white/10 rounded text-[10px] font-mono text-gray-400">v1.2</div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Changelog Button */}
+            <button 
+                onClick={() => setShowChangelog(true)}
+                className="p-2.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors border border-transparent hover:border-white/10"
+                title="Novidades"
+            >
+                <NewspaperIcon className="w-5 h-5" />
+            </button>
+
             {isAuthenticated ? (
                 <div className="flex items-center gap-3 bg-gray-900/80 p-1.5 pl-4 rounded-full border border-gray-800 backdrop-blur-md shadow-xl">
                     <div className="flex flex-col text-right">
@@ -137,10 +154,11 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
                     <button 
                         onClick={handleSync} 
                         disabled={isSyncing}
-                        className="p-2 text-teal-400 hover:bg-teal-500/10 rounded-full transition-colors" 
+                        className="p-2 text-teal-400 hover:bg-teal-500/10 rounded-full transition-colors relative" 
                         title="Sincronizar Cloud"
                     >
                         <ArrowPathIcon className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+                        {isSyncing && <span className="absolute top-0 right-0 w-2 h-2 bg-teal-400 rounded-full animate-ping"></span>}
                     </button>
                     <button onClick={logout} className="p-2 text-red-400 hover:bg-red-500/10 rounded-full transition-colors" title="Sair">
                         <ArrowRightIcon className="w-5 h-5" />
@@ -152,7 +170,7 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
                     className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-full font-bold transition-all border border-gray-700 shadow-lg text-sm"
                 >
                     <UserIcon className="w-4 h-4" />
-                    Entrar / Criar Conta
+                    Entrar (Salvar Cloud)
                 </button>
             )}
           </div>
@@ -284,7 +302,7 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
                                 </div>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => handleCloudUpload(e, life)} className="p-2 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 rounded-lg" title="Backup">
+                                <button onClick={(e) => handleCloudUpload(e, life)} className="p-2 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 rounded-lg" title="Backup Cloud">
                                     <CloudArrowUpIcon className="w-4 h-4"/>
                                 </button>
                                 <button onClick={(e) => handleExport(e, life)} className="p-2 hover:bg-gray-600 text-gray-400 hover:text-white rounded-lg" title="Exportar">
@@ -314,6 +332,7 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {showModeDialog && <GameModeDialog onSelect={handleModeSelected} onCancel={() => setShowModeDialog(false)} />}
+      {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
     </div>
   );
 }
