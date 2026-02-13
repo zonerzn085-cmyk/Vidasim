@@ -6,7 +6,6 @@ export const authService = {
     // --- AUTHENTICATION ---
 
     register: async (name: string, email: string, password: string): Promise<User> => {
-        // CORREÇÃO CRÍTICA: Pega a URL atual (localhost ou Vercel) dinamicamente
         const currentUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
 
         const { data, error } = await supabase.auth.signUp({
@@ -16,14 +15,12 @@ export const authService = {
                 data: {
                     name: name,
                 },
-                // Isso diz ao Supabase: "Mande o usuário de volta para este site exato após clicar no email"
                 emailRedirectTo: currentUrl, 
             },
         });
 
         if (error) {
             console.error("Erro no Registro:", error);
-            // Tratamento de erros comuns do Supabase
             if (error.message.includes("User already registered") || error.message.includes("already registered")) {
                 throw new Error("Este e-mail já está cadastrado. Tente fazer login.");
             }
@@ -33,16 +30,13 @@ export const authService = {
             if (error.message.includes("valid email")) {
                 throw new Error("Por favor, insira um e-mail válido.");
             }
-            // Tratamento para Rate Limit (Excesso de tentativas)
             if (error.message.includes("rate limit") || error.message.includes("Too many requests") || error.status === 429) {
                 throw new Error("Muitas tentativas recentes. O sistema bloqueou temporariamente por segurança. Aguarde 15 minutos.");
             }
             throw new Error("Erro ao criar conta: " + error.message);
         }
 
-        // Se o usuário foi criado, mas não tem sessão, significa que precisa confirmar email
         if (data.user && !data.session) {
-             // Retornamos um objeto parcial apenas para indicar sucesso, o AuthContext lidará com o aviso
              return {
                 id: data.user.id,
                 name: name,
@@ -126,6 +120,7 @@ export const authService = {
 
         if (error) {
             console.error("Supabase Sync Error:", error);
+            throw new Error("Falha ao salvar na nuvem: " + error.message);
         }
     },
 

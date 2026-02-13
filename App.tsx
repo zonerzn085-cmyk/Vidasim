@@ -48,7 +48,7 @@ function GameContent(): React.ReactElement {
         gameLog, history, isLoading,
         savedLives, saveMessage, tombstone, isGameOver,
         ageUpMessage, eventNotification, showMigrationNotification, setShowMigrationNotification,
-        handlePlayerAction, saveGame, loadGame, deleteLife, startCustomGame, quickStart, instantPlay, importLife, goToMenu, resetGame,
+        handlePlayerAction, saveGame, loadGame, deleteLife, startCustomGame, quickStart, instantPlay, goToMenu, resetGame,
         fetchNeighborhoodData, fetchBusinessData
     } = useGame();
 
@@ -216,7 +216,6 @@ function GameContent(): React.ReactElement {
             onDelete={deleteLife} 
             onNewGame={() => setGameState('creator')}
             onQuickStart={quickStart}
-            onImport={importLife}
             onInstantPlay={instantPlay}
             showMigrationNotification={showMigrationNotification}
             onDismissMigrationNotification={() => setShowMigrationNotification(false)}

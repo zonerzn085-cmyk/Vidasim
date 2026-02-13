@@ -73,17 +73,17 @@ const AppIcon: React.FC<AppIconProps> = ({ icon, label, gradient, onClick, notif
         style={{ animationDelay: `${delay}ms` }}
     >
         <div className={`
-            ${isDock ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-16 h-16 sm:w-18 sm:h-18 lg:w-20 lg:h-20'} 
+            ${isDock ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20'} 
             rounded-2xl lg:rounded-[1.2rem] ${gradient} flex items-center justify-center text-white shadow-lg shadow-black/20 relative border border-white/10
         `}>
-            <div className={`${isDock ? 'w-7 h-7 sm:w-8 sm:h-8' : 'w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10'}`}>{icon}</div>
+            <div className={`${isDock ? 'w-7 h-7 sm:w-8 sm:h-8' : 'w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10'}`}>{icon}</div>
             {notification ? (
                 <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold border-2 border-gray-900 shadow-sm animate-bounce">
                     {notification}
                 </div>
             ) : null}
         </div>
-        {!isDock && <span className="text-[11px] sm:text-xs text-white font-medium drop-shadow-md tracking-tight">{label}</span>}
+        {!isDock && <span className="text-[10px] sm:text-xs text-white font-medium drop-shadow-md tracking-tight">{label}</span>}
     </button>
 );
 
@@ -98,11 +98,11 @@ const SubMenu: React.FC<SubMenuProps> = ({ title, onClose, children }) => (
                 {title}
             </h3>
         </div>
-        <div className="flex-grow overflow-y-auto p-4 lg:p-6 space-y-3 bg-gray-950">
+        <div className="flex-grow overflow-y-auto p-4 lg:p-6 space-y-3 bg-gray-950 custom-scrollbar">
             {children}
         </div>
         {/* Home Indicator line to close app */}
-        <div className="h-6 w-full flex justify-center items-center pb-2 bg-gray-950" onClick={onClose}>
+        <div className="h-6 w-full flex justify-center items-center pb-2 bg-gray-950 flex-shrink-0" onClick={onClose}>
              <div className="w-32 h-1 bg-gray-700 rounded-full"></div>
         </div>
     </div>
@@ -237,7 +237,7 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4">
         {/* Device Frame */}
-        <div className="w-full h-full sm:w-[380px] sm:h-[750px] bg-black sm:rounded-[3rem] sm:border-[8px] sm:border-gray-800 shadow-2xl relative overflow-hidden flex flex-col ring-1 ring-white/10">
+        <div className="w-full h-full sm:w-[380px] sm:h-[85vh] bg-black sm:rounded-[3rem] sm:border-[8px] sm:border-gray-800 shadow-2xl relative overflow-hidden flex flex-col ring-1 ring-white/10">
             
             {/* Wallpaper */}
             <div className="absolute inset-0 z-0">
@@ -246,7 +246,7 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
             </div>
             
             {/* Notch/Status Bar Area */}
-            <div className="pt-2 px-6 flex justify-between items-center text-xs font-bold text-white relative z-20 h-8 sm:mt-2">
+            <div className="pt-2 px-6 flex justify-between items-center text-xs font-bold text-white relative z-20 h-8 sm:mt-2 flex-shrink-0">
                 <span>{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                 <div className="flex gap-1.5 items-center">
                     <span className="text-[10px] text-gray-300">5G</span>
@@ -262,14 +262,14 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
             </div>
 
             {/* Main Screen Content */}
-            <div className="flex-grow flex flex-col relative z-10 px-5 pb-6 pt-8">
+            <div className="flex-grow flex flex-col relative z-10 px-5 pb-6 pt-8 overflow-y-auto no-scrollbar">
                 {currentApp ? (
                     renderAppContent()
                 ) : (
                     <>
                         {/* Clock Widget */}
-                        <div className="mb-8 text-center animate-fade-in-up">
-                            <div className="text-6xl font-thin text-white drop-shadow-lg tracking-tighter">
+                        <div className="mb-8 text-center animate-fade-in-up flex-shrink-0">
+                            <div className="text-5xl sm:text-6xl font-thin text-white drop-shadow-lg tracking-tighter">
                                 {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </div>
                             <div className="text-sm font-medium text-gray-200 mt-1 drop-shadow-md">
@@ -281,7 +281,7 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
                         </div>
 
                         {/* App Grid */}
-                        <div className="grid grid-cols-4 gap-x-2 gap-y-6 mb-auto">
+                        <div className="grid grid-cols-4 gap-x-2 gap-y-4 sm:gap-y-6 mb-auto">
                             {mainApps.map((app, index) => (
                                 <AppIcon 
                                     key={index} 
@@ -292,7 +292,7 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
                         </div>
 
                         {/* Dock (Glassmorphism) */}
-                        <div className="mt-4 bg-white/10 backdrop-blur-xl rounded-[2rem] p-3 flex justify-around items-center border border-white/5 mx-1">
+                        <div className="mt-4 bg-white/10 backdrop-blur-xl rounded-[2rem] p-3 flex justify-around items-center border border-white/5 mx-1 flex-shrink-0">
                             {dockApps.map((app, index) => (
                                 <AppIcon 
                                     key={index} 
@@ -307,7 +307,7 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
             </div>
 
             {/* Home Indicator */}
-            <div className="h-1.5 w-32 bg-white/80 rounded-full mx-auto mb-2 absolute bottom-2 left-1/2 -translate-x-1/2 z-20 shadow-sm"></div>
+            <div className="h-1.5 w-32 bg-white/80 rounded-full mx-auto mb-2 absolute bottom-2 left-1/2 -translate-x-1/2 z-20 shadow-sm pointer-events-none"></div>
         </div>
 
         {/* Modals Logic */}

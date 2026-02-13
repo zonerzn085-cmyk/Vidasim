@@ -9,7 +9,7 @@ import { storageService } from '../services/storageService';
 import { getCityNeighborhoods } from '../data/names'; 
 import { baseCityStructure } from '../data/cityData'; 
 import { useAuth } from './AuthContext';
-import { useUI } from './UIContext'; // Importar UI para setar o modo visual
+import { useUI } from './UIContext';
 
 type GameState = 'loading' | 'menu' | 'creator' | 'playing';
 type GenerationMode = 'robust' | 'concise';
@@ -45,7 +45,6 @@ interface GameContextType {
     startCustomGame: (data: CharacterCreationData, mode: GenerationMode) => Promise<void>;
     quickStart: (mode: GenerationMode) => Promise<void>;
     instantPlay: (saveData: SaveData) => void;
-    importLife: (saveData: SaveData) => void;
     resetGame: () => void;
     goToMenu: () => void;
     
@@ -77,7 +76,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
 
     // --- Hooks ---
     const { uploadSave, isAuthenticated } = useAuth();
-    const { toggleSummaryMode, isSummaryMode } = useUI(); // Acesso ao UI Context se precisar manipular visualmente
+    const { toggleSummaryMode, isSummaryMode } = useUI();
 
     // --- Initialization ---
     useEffect(() => {
@@ -141,26 +140,23 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
             version: C.CURRENT_SAVE_VERSION,
         };
         
-        // 1. Local Save (Synchronous-ish)
+        // 1. Local Cache Save (Synchronous-ish) - Kept for speed/offline capability during session
         const success = storageService.saveLife(newSaveData);
         if (success) {
             setSavedLives(storageService.getSaves());
         }
 
-        // 2. Cloud Save (Immediate but Async)
-        // We do NOT wait for cloud save to finish before showing UI feedback to keep game snappy,
-        // but we trigger it immediately.
+        // 2. Cloud Save (Immediate)
         if (isAuthenticated) {
             // Trim heavy history for cloud to avoid payload limits
             const cloudSave = { ...newSaveData, history: [] }; 
-            // Fire and forget (handled by AuthContext with internal error logging)
             uploadSave(cloudSave); 
         }
         
         // UI Feedback
         if (success) {
             if (!isAutoSave) {
-                setSaveMessage(isAuthenticated ? 'Salvo na Nuvem!' : 'Salvo (Local)!');
+                setSaveMessage(isAuthenticated ? 'Salvo na Nuvem!' : 'Salvo!');
                 setTimeout(() => setSaveMessage(''), 2000);
             } else {
                 setTimeout(() => setSaveMessage(''), 1000);
@@ -187,7 +183,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
     // --- Game Logic ---
 
     const handleStreamStart = useCallback(async (initialPrompt: string, baseStats: PlayerStats, lifeId: string, cityName: string = 'São Paulo') => {
-        // INJECT STYLE INSTRUCTION
         const styleInstruction = generationMode === 'concise' 
             ? "MODO ATIVO: RESUMO. Gere apenas 1 parágrafo curto e direto ao ponto. Preencha 'eventSummary' com uma versão sintetizada." 
             : "MODO ATIVO: ROBUSTO. Gere uma narrativa detalhada e envolvente.";
@@ -428,13 +423,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
     // --- Actions ---
 
     const startCustomGame = useCallback(async (customData: CharacterCreationData, mode: GenerationMode) => {
-        setGenerationMode(mode); // Set mode globally
-        
-        // Sync UI summary mode with game mode
-        // Note: We can't strictly force the UIContext here without more wiring, 
-        // but the prompt instruction is handled above. 
-        // Ideally, if mode is concise, isSummaryMode should be true.
-        
+        setGenerationMode(mode); 
         const newLifeId = Date.now().toString();
         setCurrentLifeId(newLifeId);
         setGameState('playing');
@@ -478,7 +467,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
 
     const quickStart = useCallback(async (mode: GenerationMode) => {
         setGenerationMode(mode);
-        
         const newLifeId = Date.now().toString();
         setCurrentLifeId(newLifeId);
         setGameState('playing');
@@ -504,8 +492,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         setPlayerStats(migratedData.playerStats);
         setGameLog(migratedData.gameLog);
         setHistory(migratedData.history as Content[]);
-        
-        // Default to robust on load unless we save the mode in SaveData (future feature)
         setGenerationMode('robust'); 
         
         setGameState('playing');
@@ -537,12 +523,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         setSavedLives(updatedSaves);
     }, []);
 
-    const importLife = useCallback((importedData: SaveData) => {
-        const migratedData = migrate(importedData);
-        storageService.saveLife(migratedData);
-        setSavedLives(storageService.getSaves());
-    }, []);
-
     const goToMenu = useCallback(async () => {
         if (gameState === 'playing') await saveGame();
         setGameState('menu');
@@ -560,7 +540,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         setGameLog([]);
     }, []);
 
-    // ... (rest of fetch wrappers same as before) ...
     const wrapperFetchNeighborhoodData = useCallback(async (neighborhoodId: string, category: keyof typeof fetchNeighborhoodData) => {
         const targetNeighborhood = playerStats.city.find(n => n.id === neighborhoodId);
         if (!targetNeighborhood) return;
@@ -597,7 +576,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         savedLives, saveMessage, currentLifeId,
         generationMode, setGenerationMode,
         ageUpMessage, eventNotification, showMigrationNotification, setShowMigrationNotification,
-        handlePlayerAction, saveGame, loadGame, deleteLife, startCustomGame, quickStart, instantPlay, importLife, resetGame, goToMenu,
+        handlePlayerAction, saveGame, loadGame, deleteLife, startCustomGame, quickStart, instantPlay, resetGame, goToMenu,
         fetchNeighborhoodData: wrapperFetchNeighborhoodData,
         fetchBusinessData: wrapperFetchBusinessData
     };

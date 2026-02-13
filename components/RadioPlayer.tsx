@@ -16,7 +16,6 @@ function RadioPlayer(): React.ReactElement {
     const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Extrair categorias únicas
     const categories = useMemo(() => ['Todos', ...Array.from(new Set(playlists.map(p => p.category)))], []);
 
     const filteredPlaylists = useMemo(() => {
@@ -24,7 +23,6 @@ function RadioPlayer(): React.ReactElement {
         return playlists.filter(p => p.category === selectedCategory);
     }, [selectedCategory]);
 
-    // Fecha o menu se clicar fora dele
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -47,15 +45,15 @@ function RadioPlayer(): React.ReactElement {
             {/* Botão Principal no Header */}
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 shadow-lg ${
+                className={`flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full border transition-all duration-300 shadow-lg ${
                     isOpen 
                     ? 'bg-green-600 border-green-500 text-white' 
                     : 'bg-gray-900/80 border-gray-700/50 text-green-400 hover:bg-gray-800'
                 }`}
             >
                 {isOpen ? <SignalIcon className="w-4 h-4 animate-pulse" /> : <MusicalNoteIcon className="w-4 h-4" />}
-                <span className="text-xs font-bold hidden sm:block">Spotify Rádio</span>
-                <span className="text-[10px] opacity-70 max-w-[80px] truncate hidden md:block">
+                <span className="text-xs font-bold hidden md:block">Spotify Rádio</span>
+                <span className="text-[10px] opacity-70 max-w-[80px] truncate hidden lg:block">
                     {currentPlaylistName}
                 </span>
                 <ChevronDownIcon className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -63,7 +61,7 @@ function RadioPlayer(): React.ReactElement {
 
             {/* Painel Flutuante do Spotify */}
             {isOpen && (
-                <div className="absolute top-full right-0 mt-3 w-[320px] sm:w-[380px] bg-black border border-gray-700 rounded-2xl shadow-2xl overflow-hidden z-[60] animate-fade-in-up flex flex-col max-h-[500px]">
+                <div className="absolute top-full right-0 mt-3 w-[300px] sm:w-[380px] bg-black border border-gray-700 rounded-2xl shadow-2xl overflow-hidden z-[60] animate-fade-in-up flex flex-col max-h-[500px]">
                     {/* Header do Player */}
                     <div className="bg-gradient-to-r from-green-900 to-black p-3 flex justify-between items-center border-b border-gray-800 flex-shrink-0">
                         <div className="flex items-center gap-2">
@@ -89,7 +87,7 @@ function RadioPlayer(): React.ReactElement {
                     </div>
 
                     {/* Filtros de Categoria */}
-                    <div className="px-3 py-2 bg-gray-900 border-b border-gray-800 overflow-x-auto no-scrollbar flex gap-2 flex-shrink-0">
+                    <div className="px-3 py-2 bg-gray-900 border-b border-gray-800 overflow-x-auto custom-scrollbar flex gap-2 flex-shrink-0">
                         {categories.map(cat => (
                             <button
                                 key={cat}
@@ -106,7 +104,7 @@ function RadioPlayer(): React.ReactElement {
                     </div>
 
                     {/* Seletor de Estação */}
-                    <div className="p-2 bg-gray-900 overflow-y-auto custom-scrollbar flex-grow">
+                    <div className="p-2 bg-gray-900 overflow-y-auto custom-scrollbar flex-grow max-h-[200px]">
                         <div className="space-y-1">
                             {filteredPlaylists.map((playlist) => (
                                 <button

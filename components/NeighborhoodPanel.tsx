@@ -118,7 +118,7 @@ const CategoryDetailView: React.FC<{ title: string; onBack: () => void; isLoadin
         </button>
         <h3 className="text-2xl font-semibold text-teal-300">{title}</h3>
       </div>
-      <div className="flex-grow overflow-y-auto pr-2 space-y-3">
+      <div className="flex-grow overflow-y-auto pr-2 space-y-3 custom-scrollbar">
         {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -136,7 +136,6 @@ function NeighborhoodPanel({ neighborhood, playerStats, onClose, onPlayerAction,
   const [isLoading, setIsLoading] = useState(false);
   const [expandedBuildingId, setExpandedBuildingId] = useState<string | null>(null);
 
-  // Styling based on Safety/Wealth
   const isDangerous = neighborhood.safety < 40;
   const isRich = neighborhood.wealthLevel === 'Rica';
   
@@ -150,13 +149,11 @@ function NeighborhoodPanel({ neighborhood, playerStats, onClose, onPlayerAction,
       themeGlow = "shadow-yellow-900/20";
   }
 
-  // Auto-fetch data if array is empty when category is selected
   const handleCategorySelect = useCallback(async (category: Category) => {
     setActiveCategory(category);
     if (category === 'main' || category === 'event') return;
 
     const categoryData = neighborhood[category as keyof Neighborhood];
-    // Check if data is missing or empty array, triggering lazy generation
     if (!categoryData || (Array.isArray(categoryData) && categoryData.length === 0)) {
         setIsLoading(true);
         try {
@@ -344,7 +341,7 @@ function NeighborhoodPanel({ neighborhood, playerStats, onClose, onPlayerAction,
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 overflow-y-auto custom-scrollbar">
                         {neighborhood.currentEvent && <div className="md:col-span-2"><CategoryMenuButton icon={<MegaphoneIcon className="w-8 h-8"/>} label={neighborhood.currentEvent.name} onClick={() => handleCategorySelect('event')} count={1} isEvent={true}/></div>}
                         <CategoryMenuButton icon={<BuildingOfficeIcon className="w-8 h-8"/>} label="Edifícios" onClick={() => handleCategorySelect('buildings')} count={neighborhood.buildings?.length ?? 0} />
                         <CategoryMenuButton icon={<UserGroupIcon className="w-8 h-8"/>} label="Pessoas Notáveis" onClick={() => handleCategorySelect('notableNPCs')} count={neighborhood.notableNPCs?.length ?? 0} />
@@ -358,13 +355,13 @@ function NeighborhoodPanel({ neighborhood, playerStats, onClose, onPlayerAction,
   
   return (
     <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-sm z-40 flex flex-col p-4 sm:p-6 lg:p-8 animate-scale-in">
-      <div className="flex justify-between items-center mb-6 flex-shrink-0">
-        <div className="flex items-center gap-4">
-            <MapPinIcon className={`w-10 h-10 ${isDangerous ? 'text-red-500' : isRich ? 'text-yellow-400' : 'text-teal-400'}`} />
+      <div className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4">
+            <MapPinIcon className={`w-8 h-8 sm:w-10 sm:h-10 ${isDangerous ? 'text-red-500' : isRich ? 'text-yellow-400' : 'text-teal-400'}`} />
             <div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-white">{neighborhood.name}</h2>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">{neighborhood.name}</h2>
                 <div className="flex items-center gap-3 text-sm">
-                    <span className="text-gray-400 italic">"{neighborhood.description}"</span>
+                    <span className="text-gray-400 italic truncate max-w-[200px] sm:max-w-none">"{neighborhood.description}"</span>
                 </div>
             </div>
         </div>
@@ -373,9 +370,9 @@ function NeighborhoodPanel({ neighborhood, playerStats, onClose, onPlayerAction,
         </button>
       </div>
 
-      <div className={`flex-grow bg-gray-800/50 rounded-2xl border ${themeBorder} ${themeGlow} shadow-xl overflow-hidden flex flex-col`}>
+      <div className={`flex-grow bg-gray-800/50 rounded-2xl border ${themeBorder} ${themeGlow} shadow-xl overflow-hidden flex flex-col h-full`}>
         {/* Safety Meter Header */}
-        <div className="bg-gray-900/60 p-3 flex items-center justify-between border-b border-gray-700/50">
+        <div className="bg-gray-900/60 p-3 flex items-center justify-between border-b border-gray-700/50 flex-shrink-0">
             <div className="flex items-center gap-2">
                 <ShieldCheckIcon className={`w-5 h-5 ${neighborhood.safety > 80 ? 'text-green-400' : neighborhood.safety > 40 ? 'text-yellow-400' : 'text-red-500'}`} />
                 <span className="text-sm text-gray-300">Segurança:</span>

@@ -152,10 +152,9 @@ function ActionsPanel({ playerStats, onClose, onPlayerAction, onOpenCompanyManag
   const hasJob = playerStats.career !== 'Desempregado' && !careerLower.includes('estudante');
   const hasBusiness = !!playerStats.business;
   const canCreateGang = careerLower.includes('membro de gangue') && playerStats.notoriety >= 40;
-  const hasMentorship = playerStats.relationships.some(r => r.mentorshipDetails);
-  const isTooYoungForTimeSkips = playerStats.age < 6;
   const hasHobbies = playerStats.hobbies.length > 0;
   const hasCriminality = playerStats.criminality > 0 || careerLower.includes('gangue') || careerLower.includes('ladrão');
+  const isTooYoungForTimeSkips = playerStats.age < 6;
 
   const tabs = [
       { name: 'Principal', icon: <UserIcon />, condition: true },
@@ -299,17 +298,17 @@ function ActionsPanel({ playerStats, onClose, onPlayerAction, onOpenCompanyManag
       onClick={onClose}
     >
       <div 
-        className="bg-gray-900 border border-gray-700 rounded-3xl shadow-2xl w-full max-w-4xl h-[80vh] sm:h-[70vh] flex flex-col sm:flex-row overflow-hidden animate-scale-in"
+        className="bg-gray-900 border border-gray-700 rounded-3xl shadow-2xl w-full max-w-4xl h-full sm:h-[70vh] flex flex-col sm:flex-row overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sidebar Navigation */}
-        <div className="sm:w-64 bg-gray-950 sm:border-r border-b sm:border-b-0 border-gray-800 flex flex-col">
+        <div className="sm:w-64 bg-gray-950 sm:border-r border-b sm:border-b-0 border-gray-800 flex flex-col flex-shrink-0">
             <div className="p-6 hidden sm:block border-b border-gray-800">
                 <h2 className="text-2xl font-black text-white tracking-tighter">Ações</h2>
                 <p className="text-xs text-gray-500 mt-1">Escolha seu caminho.</p>
             </div>
             
-            <nav className="flex sm:flex-col gap-2 p-2 sm:p-4 overflow-x-auto sm:overflow-visible no-scrollbar">
+            <nav className="flex sm:flex-col gap-2 p-3 sm:p-4 overflow-x-auto sm:overflow-visible no-scrollbar">
                 {tabs.map(tab => (
                     <TabButton 
                         key={tab.name}
@@ -324,7 +323,7 @@ function ActionsPanel({ playerStats, onClose, onPlayerAction, onOpenCompanyManag
 
         {/* Content Area */}
         <div className="flex-grow flex flex-col overflow-hidden bg-gray-900 relative">
-            <div className="sm:hidden p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+            <div className="sm:hidden p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950 flex-shrink-0">
                  <span className="font-bold text-white text-lg">{activeTab}</span>
                  <button onClick={onClose}><XMarkIcon className="w-6 h-6 text-gray-400"/></button>
             </div>
