@@ -20,7 +20,10 @@ import {
     HomeIcon,
     ArrowLeftIcon,
     AcademicCapIcon,
-    BuildingLibraryIcon
+    BuildingLibraryIcon,
+    MusicalNoteIcon,
+    GlobeAltIcon,
+    PlayCircleIcon
 } from '@heroicons/react/24/outline';
 import InputDialog from './InputDialog';
 import HobbyActionsModal from './HobbyActionsModal';
@@ -213,6 +216,50 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
                         <ActionRow icon={<BookOpenIcon className="w-5 h-5"/>} label="Autoestudo" subtitle="Aprender nova habilidade" onClick={() => setIsStudyModalOpen(true)} delay={getDelay()} />
                     </SubMenu>
                 );
+            case 'Music':
+                return (
+                    <SubMenu title="Streaming de Música" onClose={() => setCurrentApp(null)}>
+                        <div className="bg-gradient-to-br from-red-600 to-black p-5 rounded-2xl mb-4 text-white shadow-lg flex items-center justify-between animate-pop-in border border-red-500/30">
+                            <div>
+                                <p className="font-black text-xl tracking-tight">YouTube Music</p>
+                                <p className="text-xs opacity-70 mt-1 font-medium">Acesso Ilimitado • Sem Bloqueios</p>
+                            </div>
+                            <div className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center shadow-md">
+                                <PlayCircleIcon className="w-6 h-6" />
+                            </div>
+                        </div>
+                        
+                        <div className="p-3 bg-gray-900/50 border border-gray-700 rounded-xl text-xs text-gray-400 mb-4 text-center">
+                            Abre o player oficial em nova aba para garantir compatibilidade total.
+                        </div>
+
+                        <ActionRow 
+                            icon={<GlobeAltIcon className="w-5 h-5"/>} 
+                            label="Abrir YouTube Music" 
+                            subtitle="Toque qualquer música do mundo" 
+                            onClick={() => window.open('https://music.youtube.com', '_blank')} 
+                            delay={getDelay()} 
+                        />
+                        
+                        <div className="my-4 h-px bg-gray-800"></div>
+                        <p className="text-xs text-gray-500 font-bold uppercase mb-2 px-1">Ações de Roleplay (Vibe)</p>
+
+                        <ActionRow 
+                            icon={<MusicalNoteIcon className="w-5 h-5"/>} 
+                            label="Ouvir Lo-fi" 
+                            subtitle="Relaxar e reduzir estresse" 
+                            onClick={() => handleAction("Colocar fones de ouvido e ouvir música lo-fi para relaxar")} 
+                            delay={getDelay()} 
+                        />
+                         <ActionRow 
+                            icon={<MusicalNoteIcon className="w-5 h-5"/>} 
+                            label="Música Focada" 
+                            subtitle="Aumentar produtividade" 
+                            onClick={() => handleAction("Ouvir playlist de foco para estudar/trabalhar")} 
+                            delay={getDelay()} 
+                        />
+                    </SubMenu>
+                );
           default:
               return null;
       }
@@ -225,6 +272,7 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
       { label: "Banco", gradient: "bg-purple-600", icon: <BanknotesIcon/>, onClick: () => setCurrentApp('Bank') },
       { label: "Lazer", gradient: "bg-orange-500", icon: <TrophyIcon/>, onClick: () => setCurrentApp('Hobbies') },
       { label: "Mapa", gradient: "bg-emerald-500", icon: <MapIcon/>, onClick: () => { props.onOpenCityMap(); onClose(); } },
+      { label: "Música", gradient: "bg-pink-600", icon: <MusicalNoteIcon/>, onClick: () => setCurrentApp('Music') },
   ];
 
   const dockApps = [
