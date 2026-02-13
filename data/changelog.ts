@@ -8,8 +8,19 @@ export interface ChangelogEntry {
 
 export const changelogData: ChangelogEntry[] = [
     {
-        version: "1.2.0",
+        version: "1.3.0",
         date: "Hoje",
+        title: "Atualização: Mochila & Itens",
+        changes: [
+            "NOVO: Sistema de Inventário (Mochila) adicionado ao menu do celular.",
+            "Agora você pode visualizar, gerenciar e usar os itens comprados no ShopZone.",
+            "Ícone de Inventário adicionado à grade de aplicativos do smartphone.",
+            "Melhorias na interface visual dos painéis."
+        ]
+    },
+    {
+        version: "1.2.0",
+        date: "Anterior",
         title: "Atualização de Estabilidade & Música",
         changes: [
             "CRÍTICO: Sistema de salvamento na nuvem reforçado. Saves agora sincronizam automaticamente ao abrir o menu.",

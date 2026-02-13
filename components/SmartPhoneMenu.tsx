@@ -21,7 +21,8 @@ import {
     AcademicCapIcon,
     BuildingLibraryIcon,
     MusicalNoteIcon,
-    GlobeAltIcon
+    GlobeAltIcon,
+    ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 import InputDialog from './InputDialog';
 import HobbyActionsModal from './HobbyActionsModal';
@@ -41,6 +42,7 @@ interface SmartPhoneMenuProps {
   onOpenRelationships: () => void;
   onOpenCityMap: () => void;
   onOpenInvestments: () => void;
+  onOpenInventory: () => void;
 }
 
 interface AppIconProps {
@@ -269,6 +271,7 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
                             <AppIcon icon={<ShoppingCartIcon/>} label="Shop" gradient="bg-gradient-to-br from-orange-500 to-amber-600" onClick={() => { props.onOpenShopping(); onClose(); }} delay={200} />
                             
                             <AppIcon icon={<TrophyIcon/>} label="Hobbies" gradient="bg-gradient-to-br from-purple-500 to-violet-600" onClick={() => setCurrentApp('Hobbies')} delay={250} />
+                            <AppIcon icon={<ArchiveBoxIcon/>} label="Mochila" gradient="bg-gradient-to-br from-amber-500 to-yellow-600" onClick={() => { props.onOpenInventory(); onClose(); }} delay={275} />
                             <AppIcon icon={<MusicalNoteIcon/>} label="Música" gradient="bg-gradient-to-br from-rose-500 to-red-600" onClick={() => setCurrentApp('Music')} delay={300} />
                             
                             {playerStats.hobbies.some(h => h.toLowerCase().includes('hacking') || h.toLowerCase().includes('crime')) && (

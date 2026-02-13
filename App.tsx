@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Chat } from '@google/genai';
 import { GameProvider, useGame } from './contexts/GameContext';
 import { UIProvider, useUI } from './contexts/UIContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext'; // Import useAuth
 import { createChatSession, createNpcChatSession } from './services/geminiService';
 import { Relationship, NotableNPC, ChatMessage, NpcChatMessage, PlayerStats } from './types';
 
@@ -31,6 +31,7 @@ import ShoppingDialog from './components/ShoppingDialog';
 import InvestmentsPanel from './components/InvestmentsPanel';
 import ImageStudioPanel from './components/ImageStudioPanel';
 import MemoriesPanel from './components/MemoriesPanel';
+import InventoryPanel from './components/InventoryPanel'; // New
 import ActionFeedbackToast from './components/ActionFeedbackToast';
 import GameOver from './components/GameOver';
 import LayoutBackground from './components/LayoutBackground';
@@ -42,6 +43,9 @@ import {
 } from '@heroicons/react/24/solid';
 
 function GameContent(): React.ReactElement {
+    // Auth Loading Check
+    const { isLoading: isAuthLoading } = useAuth();
+
     const {
         gameState, setGameState,
         playerStats, setPlayerStats,
@@ -200,6 +204,16 @@ function GameContent(): React.ReactElement {
 
     // --- Render Logic ---
 
+    // Prioridade Máxima: Verificar se a autenticação ainda está carregando
+    if (isAuthLoading) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-transparent gap-4">
+                <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-white text-xl font-light tracking-wide animate-pulse">Conectando...</p>
+            </div>
+        );
+    }
+
     if (gameState === 'loading') {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-transparent gap-4">
@@ -320,6 +334,7 @@ function GameContent(): React.ReactElement {
                     onOpenRelationships={() => openPanel('relationships')}
                     onOpenCityMap={() => openPanel('map')}
                     onOpenInvestments={() => openPanel('investments')}
+                    onOpenInventory={() => openPanel('inventory')}
                 />
             )}
             
@@ -434,6 +449,14 @@ function GameContent(): React.ReactElement {
 
             {activePanel === 'memories' && (
                 <MemoriesPanel memories={playerStats.memories} onClose={closePanel} />
+            )}
+
+            {activePanel === 'inventory' && (
+                <InventoryPanel 
+                    inventory={playerStats.inventory} 
+                    onClose={closePanel} 
+                    onUseItem={(item) => { handlePlayerAction(`Usar item: ${item.name}`); closePanel(); }}
+                />
             )}
 
             {/* Modals via Context */}

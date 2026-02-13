@@ -17,7 +17,8 @@ export type PanelName =
     | 'shopping' 
     | 'investments' 
     | 'image_studio' 
-    | 'memories';
+    | 'memories'
+    | 'inventory';
 
 export type ModalName = 
     | 'none' 

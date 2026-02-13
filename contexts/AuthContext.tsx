@@ -14,6 +14,7 @@ interface AuthContextType {
     syncSaves: () => Promise<void>; // Pulls from cloud to local
     uploadSave: (save: SaveData) => Promise<void>; // Pushes local to cloud
     isSyncing: boolean;
+    isLoading: boolean; // Novo estado para controlar o carregamento inicial da auth
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,13 +22,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children?: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isLoading, setIsLoading] = useState(true); // Começa carregando
 
     // Initialize Session
     useEffect(() => {
-        // Check active session on load
-        authService.getUserSession().then(sessionUser => {
-            setUser(sessionUser);
-        });
+        const  initSession = async () => {
+            try {
+                // Check active session on load
+                const sessionUser = await authService.getUserSession();
+                setUser(sessionUser);
+            } catch (e) {
+                console.error("Failed to restore session", e);
+            } finally {
+                // Importante: Libera a app apenas após tentar restaurar a sessão
+                setIsLoading(false);
+            }
+        };
+
+        initSession();
 
         // Listen for auth changes (e.g. token refresh, logout in another tab)
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -41,6 +53,8 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
             } else {
                 setUser(null);
             }
+            // Garante que o loading pare se a mudança de estado acontecer rapidamente
+            setIsLoading(false);
         });
 
         return () => {
@@ -110,7 +124,8 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
             logout,
             syncSaves,
             uploadSave,
-            isSyncing
+            isSyncing,
+            isLoading
         }}>
             {children}
         </AuthContext.Provider>
