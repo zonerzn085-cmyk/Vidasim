@@ -35,7 +35,7 @@ interface GameContextType {
 
     // Actions
     handlePlayerAction: (action: string) => Promise<void>;
-    saveGame: (isAutoSave?: boolean, statsOverride?: PlayerStats, logOverride?: GameTurn[], historyOverride?: Content[]) => Promise<void>;
+    saveGame: (isAutoSave?: boolean, statsOverride?: PlayerStats, logOverride?: GameTurn[], historyOverride?: Content[], lifeIdOverride?: string) => Promise<void>;
     loadGame: (id: string) => void;
     deleteLife: (id: string) => void;
     startCustomGame: (data: CharacterCreationData) => Promise<void>;
@@ -78,7 +78,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         const lives = storageService.getSaves();
         let wereSavesMigrated = false;
         
-        // Only attempt migration if we actually have lives, to avoid wiping DB with empty array on error
+        // Only attempt migration if we actually have lives
         if (lives.length > 0) {
             const migratedLives = lives.reduce<SaveData[]>((acc, life) => {
                 try {
@@ -91,7 +91,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
                     }
                 } catch (error) {
                     console.error(`Failed to migrate save file.`, error);
-                    // If migration fails, try to keep original so we don't lose data
                     acc.push(life);
                 }
                 return acc;
@@ -112,8 +111,18 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
     }, []);
 
     // --- Persistence ---
-    const saveGame = useCallback(async (isAutoSave = false, statsOverride?: PlayerStats, logOverride?: GameTurn[], historyOverride?: Content[]) => {
-        if (!currentLifeId || gameState !== 'playing') return;
+    const saveGame = useCallback(async (
+        isAutoSave = false, 
+        statsOverride?: PlayerStats, 
+        logOverride?: GameTurn[], 
+        historyOverride?: Content[],
+        lifeIdOverride?: string
+    ) => {
+        // CORRECTION: Prefer override ID to solve race conditions during initialization
+        const targetId = lifeIdOverride || currentLifeId;
+        
+        // If we don't have an ID, we can't save.
+        if (!targetId) return;
 
         const statsToSave = statsOverride || playerStats;
         const logToSave = logOverride || gameLog;
@@ -123,7 +132,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         else setSaveMessage('Auto-save...');
 
         const newSaveData: SaveData = {
-            id: currentLifeId,
+            id: targetId,
             playerStats: statsToSave,
             gameLog: logToSave,
             history: historyToSave,
@@ -135,12 +144,12 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         
         // Sync to Cloud if Authenticated (Background)
         if (isAuthenticated) {
-            // Send optimized save to cloud (less data) to avoid quota issues
             const cloudSave = { ...newSaveData, history: [] }; 
             uploadSave(cloudSave).catch(err => console.error("Cloud Auto-save failed", err));
         }
         
         if (success) {
+            // Update local state immediately to reflect new save in menus
             setSavedLives(storageService.getSaves());
             if (!isAutoSave) {
                 setSaveMessage('Salvo!');
@@ -152,7 +161,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
             setSaveMessage('Erro ao salvar!');
             setTimeout(() => setSaveMessage(''), 3000);
         }
-    }, [currentLifeId, playerStats, gameLog, history, gameState, isAuthenticated, uploadSave]);
+    }, [currentLifeId, playerStats, gameLog, history, isAuthenticated, uploadSave]);
 
     // Auto-save
     useEffect(() => {
@@ -169,7 +178,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
 
     // --- Game Logic ---
 
-    const handleStreamStart = useCallback(async (initialPrompt: string, baseStats: PlayerStats, cityName: string = 'São Paulo') => {
+    const handleStreamStart = useCallback(async (initialPrompt: string, baseStats: PlayerStats, lifeId: string, cityName: string = 'São Paulo') => {
         const stream = sendMessageToGameStream([], initialPrompt, baseStats);
         
         let accumulatedText = "";
@@ -208,9 +217,15 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
                     }
 
                     finalStats = { ...baseStats, ...statChanges, city, currentNeighborhood };
+                    
+                    // CORREÇÃO CRÍTICA: Priorizar o nome definido pelo jogador (baseStats)
+                    // Se o jogador digitou um nome, e não é "Ninguém", mantemos ele.
+                    if (baseStats.name && baseStats.name !== "Ninguém") {
+                        finalStats.name = baseStats.name;
+                    }
+
                     setPlayerStats(finalStats);
 
-                    // Inject summary if provided
                     if (eventSummary) {
                         setGameLog(prev => {
                             const updated = [...prev];
@@ -239,7 +254,17 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         ];
         setHistory(newHistory);
         setIsLoading(false);
-        saveGame(true, finalStats, [{ speaker: 'system', text: accumulatedText, summary: finalStats.currentNeighborhood?.description.slice(0, 50), date: { day: finalStats.day, month: finalStats.month, year: finalStats.year } }], newHistory);
+        
+        // CORREÇÃO CRÍTICA: Passar lifeId explicitamente para garantir que o save inicial ocorra
+        // mesmo que o state currentLifeId ainda esteja atualizando (stale closure).
+        const firstTurnLog = [{ 
+            speaker: 'system' as const, 
+            text: accumulatedText, 
+            summary: finalStats.currentNeighborhood?.description.slice(0, 50), 
+            date: { day: finalStats.day, month: finalStats.month, year: finalStats.year } 
+        }];
+        
+        saveGame(true, finalStats, firstTurnLog, newHistory, lifeId);
     }, [saveGame]);
 
     const handlePlayerAction = useCallback(async (action: string) => {
@@ -277,8 +302,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
                     const { statChanges, isGameOver, tombstone, eventSummary } = update.payload;
                     if (eventSummary) accumulatedSummary = eventSummary;
 
-                    // --- TIME SYNC LOGIC (Fix for AI forgetting to update year) ---
-                    // Calculate expected year based on age difference if necessary
                     const previousAge = finalStats.age;
                     const newAge = statChanges.age;
                     let displayYear = statChanges.year;
@@ -287,10 +310,9 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
                         const ageDiff = newAge - previousAge;
                         const currentYear = finalStats.year;
                         
-                        // If AI didn't send year, or sent the same year despite age gap
                         if (!statChanges.year || statChanges.year === currentYear) {
                             displayYear = currentYear + ageDiff;
-                            statChanges.year = displayYear; // Patch the update payload
+                            statChanges.year = displayYear; 
                         }
                     }
 
@@ -312,7 +334,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
                     isGameOverResult = isGameOver;
                     tombstoneResult = tombstone;
                     
-                    // Update log with date AND summary
                     setGameLog(prev => {
                         const newLog = [...prev];
                         const lastIdx = newLog.length - 1;
@@ -372,7 +393,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
             const finalLogForSave = [...gameLog, playerTurn, { speaker: 'system', text: accumulatedText, summary: accumulatedSummary, date: { day: finalStats.day, month: finalStats.month, year: finalStats.year } } as GameTurn];
             saveGame(true, finalStats, finalLogForSave, newHistory);
             
-            // AI Director Check
             const currentYear = finalStats.year;
             const lastAnalysisYear = finalStats.playerProfile?.lastUpdatedYear ?? 0;
             if (currentYear > 0 && currentYear > lastAnalysisYear && currentYear % 5 === 0) {
@@ -427,7 +447,8 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         OBRIGATÓRIO: Gere no JSON de resposta (em statChanges.relationships) os pais do personagem (Pai e Mãe).
         `;
         
-        await handleStreamStart(initialPrompt, initialStats, customData.city);
+        // Pass lifeId explicitly to override any stale state closures
+        await handleStreamStart(initialPrompt, initialStats, newLifeId, customData.city);
     }, [handleStreamStart]);
 
     const quickStart = useCallback(async () => {
@@ -442,7 +463,8 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
     
         const initialPrompt = `Começar uma vida aleatória no Brasil. Gere o personagem e a situação inicial. A data inicial DEVE ser 1 de Janeiro de 2024.
         OBRIGATÓRIO: Gere no JSON de resposta (em statChanges.relationships) os pais do personagem (Pai e Mãe).`;
-        await handleStreamStart(initialPrompt, C.INITIAL_PLAYER_STATS, 'São Paulo');
+        
+        await handleStreamStart(initialPrompt, C.INITIAL_PLAYER_STATS, newLifeId, 'São Paulo');
     }, [handleStreamStart]);
 
     const instantPlay = useCallback((saveData: SaveData) => {

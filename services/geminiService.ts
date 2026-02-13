@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Content, GenerateContentResponse, Modality, Chat, GenerateImagesResponse } from "@google/genai";
 import C from '../constants';
 import { ApiResponse, PlayerStats, Neighborhood, Business, Tombstone, Building, NotableNPC, Property, Job, GameProject, Technology, PlayerProfile, Relationship, Task, JobOffer, UniversityCourse, ShopItem } from '../types';
@@ -82,11 +83,12 @@ function getOptimizedState(stats: PlayerStats, action: string) {
     const actionLower = action.toLowerCase();
     
     // Heuristics for Context
-    const isBusiness = /empresa|negócio|trabalh|contratar|demitir|projeto|escritório|reunião|ceo|lucro|prejuízo|sócio|start|fundar|indústria/i.test(actionLower);
-    const isSocial = /conversar|falar|encontrar|sair|namorar|casar|terminar|pai|mãe|irmão|amigo|vizinho|conhecer|festa|interagir|relacionamento/i.test(actionLower);
+    const isBusiness = /empresa|negócio|trabalh|contratar|demitir|projeto|escritório|reunião|ceo|lucro|prejuízo|sócio|start|fundar|indústria|jogo|game|desenvolv|lançar|marketing|dlc|codar|programar/i.test(actionLower);
+    const isProject = /projeto|jogo|game|desenvolv|lançar|marketing|dlc|codar|programar/i.test(actionLower);
+    const isSocial = /conversar|falar|encontrar|sair|namorar|casar|terminar|pai|mãe|irmão|amigo|vizinho|conhecer|festa|interagir|relacionamento|amor|flerte/i.test(actionLower);
     const isTravel = /viajar|ir para|visitar|explorar|mapa|passear|bairro|mudar de cidade|voar/i.test(actionLower);
     const isShopping = /comprar|vender|loja|shopping|gastar|pagar|mercado|imóvel|carro/i.test(actionLower);
-    const isFinance = /investir|ação|ações|bolsa|cripto|banco|empréstimo|apostar|loteria|dinheiro|dólar|real/i.test(actionLower);
+    const isFinance = /investir|ação|ações|bolsa|cripto|banco|empréstimo|apostar|loteria|dinheiro|dólar|real|aplicar|resgatar/i.test(actionLower);
     const isHealth = /médico|hospital|academia|treinar|doente|ferido|cirurgia|plástica|saúde|terapia|psicólogo/i.test(actionLower);
     const isCrime = /roubar|matar|crime|gangue|polícia|preso|fugir|drogas|ilegal|hackear|invadir|assalto|tráfico/i.test(actionLower);
     const isEducation = /estudar|escola|faculdade|curso|universidade|aprender|livro|aula|matrícula/i.test(actionLower);
@@ -119,9 +121,15 @@ function getOptimizedState(stats: PlayerStats, action: string) {
         }
     };
 
-    // 2. Relationships (Filtered by Relevance)
-    // Default: Brief list. Social Context: Detailed info.
-    const relationships = stats.relationships.map(r => {
+    // 2. Relationships (Filtered by Relevance to save tokens)
+    // Only send if Social context OR Top relationships OR Immediate Family
+    const relevantRelationships = stats.relationships.filter(r => 
+        isSocial || 
+        r.relationshipScore > 80 || 
+        ['Mãe', 'Pai', 'Esposo(a)', 'Namorado(a)', 'Filho', 'Filha'].some(t => r.type.includes(t))
+    );
+
+    const relationships = relevantRelationships.map(r => {
         const base = { id: r.id, name: r.name, role: r.type, val: r.relationshipScore };
         if (isSocial) {
             return {
@@ -137,14 +145,32 @@ function getOptimizedState(stats: PlayerStats, action: string) {
     let business: any = "None";
     if (stats.business) {
         if (isBusiness) {
-            business = stats.business; 
-        } else {
             business = {
                 name: stats.business.name,
                 industry: stats.business.industry,
                 rev: stats.business.annualRevenue,
                 val: stats.business.value,
-                morale: stats.business.morale
+                morale: stats.business.morale,
+                workStyle: stats.business.workStyle,
+                // Only send full project details if relevant to projects/dev
+                gameProjects: isProject ? stats.business.gameProjects?.map(p => ({
+                    name: p.name,
+                    status: p.status,
+                    completionPercentage: p.completionPercentage,
+                    qualityScore: p.qualityScore,
+                    unitsSold: p.unitsSold
+                })) : `${stats.business.gameProjects?.length || 0} active projects`,
+                // Executives always useful in business context
+                executives: stats.business.executives?.map(e => ({ role: e.role, personId: e.personId })),
+                technologies: stats.business.technologies?.map(t => t.name)
+            }; 
+        } else {
+            // Minimal summary for non-business turns
+            business = {
+                name: stats.business.name,
+                industry: stats.business.industry,
+                role: "Owner/CEO",
+                val: stats.business.value
             };
         }
     }
@@ -159,10 +185,13 @@ function getOptimizedState(stats: PlayerStats, action: string) {
                 desc: n.description,
                 safety: n.safety,
                 wealth: n.wealthLevel,
-                event: n.currentEvent,
+                event: n.currentEvent ? { name: n.currentEvent.name, effect: n.currentEvent.effects } : null,
+                // Summarize buildings
                 spots: n.buildings.map(b => b.name),
+                // Summarize NPCs
                 npcs: n.notableNPCs.map(npc => ({ name: npc.name, desc: npc.description })),
-                market: isShopping ? n.propertiesForSale : "Hidden"
+                // Only send market data if shopping/travel
+                market: (isShopping || isTravel) ? n.propertiesForSale.map(p => ({ name: p.name, value: p.value })) : "Hidden"
             };
         } else {
             location = { 
@@ -174,13 +203,21 @@ function getOptimizedState(stats: PlayerStats, action: string) {
 
     const extras: any = {};
     if (isFinance) extras.investments = stats.investments;
-    if (isShopping || isCrime) extras.inventory = stats.inventory;
+    // Only send items names unless specifically needed
+    if (isShopping || isCrime) extras.inventory = stats.inventory.map(i => i.name);
     
-    // Memories
+    // Memories - Limit text length to save tokens
     const uniqueMemories = new Map();
     stats.memories.filter(m => m.significance === 'Lendária').forEach(m => uniqueMemories.set(m.year + m.description, m));
     stats.memories.slice(-5).forEach(m => uniqueMemories.set(m.year + m.description, m));
-    const memories = Array.from(uniqueMemories.values()).sort((a: any, b: any) => b.year - a.year);
+    
+    const memories = Array.from(uniqueMemories.values())
+        .sort((a: any, b: any) => b.year - a.year)
+        .map((m: any) => ({
+            year: m.year,
+            // Truncate long descriptions
+            text: m.description.length > 100 ? m.description.substring(0, 100) + "..." : m.description
+        }));
 
     const tasks = stats.tasks.filter(t => !t.isComplete).map(t => t.title);
 
