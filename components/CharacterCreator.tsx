@@ -2,10 +2,11 @@
 import React, { useState, useMemo } from 'react';
 import { CharacterCreationData } from '../types';
 import { HeartIcon, SparklesIcon, LightBulbIcon, UserIcon, ArrowLeftIcon, ExclamationCircleIcon, CheckCircleIcon, BanknotesIcon } from '@heroicons/react/24/outline';
-import { cityDatabase, nameDatabase } from '../data/names';
+import { nameDatabase } from '../data/names';
+import GameModeDialog from './GameModeDialog'; // Import new component
 
 interface CharacterCreatorProps {
-  onStart: (data: CharacterCreationData) => void;
+  onStart: (data: CharacterCreationData, mode: 'robust' | 'concise') => void;
   onBack: () => void;
 }
 
@@ -44,6 +45,8 @@ function CharacterCreator({ onStart, onBack }: CharacterCreatorProps): React.Rea
   const [intelligence, setIntelligence] = useState(60);
   const [appearance, setAppearance] = useState(60);
 
+  const [showModeDialog, setShowModeDialog] = useState(false); // State for mode selection
+
   const pointsUsed = useMemo(() => health + happiness + intelligence + appearance, [health, happiness, intelligence, appearance]);
   const pointsRemaining = TOTAL_ATTRIBUTE_POINTS - pointsUsed;
   const isValid = pointsRemaining === 0 && name.trim().length > 0;
@@ -56,10 +59,14 @@ function CharacterCreator({ onStart, onBack }: CharacterCreatorProps): React.Rea
     setCity(getCitiesForCountry(newCountry)[0]);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleInitialSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValid) return;
-    
+    setShowModeDialog(true);
+  }
+
+  function handleModeSelect(mode: 'robust' | 'concise') {
+    setShowModeDialog(false);
     onStart({
       name,
       gender,
@@ -68,7 +75,7 @@ function CharacterCreator({ onStart, onBack }: CharacterCreatorProps): React.Rea
       socialClass,
       hobby,
       stats: { health, happiness, intelligence, appearance },
-    });
+    }, mode);
   }
   
   function handleAttributeChange(setter: React.Dispatch<React.SetStateAction<number>>, value: number) {
@@ -120,7 +127,7 @@ function CharacterCreator({ onStart, onBack }: CharacterCreatorProps): React.Rea
                 <p className="text-gray-400 mt-1">Configure os parâmetros da sua nova existência.</p>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 sm:p-8">
+            <form onSubmit={handleInitialSubmit} className="p-6 sm:p-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                     
                     {/* Left Column: Bio Data */}
@@ -217,7 +224,7 @@ function CharacterCreator({ onStart, onBack }: CharacterCreatorProps): React.Rea
                                     }`} 
                                 disabled={!isValid}
                             >
-                                {isValid ? "INICIAR SIMULAÇÃO" : (name.trim() === "" ? "INSIRA UM NOME" : "AJUSTE OS PONTOS")}
+                                {isValid ? "CONTINUAR" : (name.trim() === "" ? "INSIRA UM NOME" : "AJUSTE OS PONTOS")}
                             </button>
                         </div>
                     </div>
@@ -225,6 +232,7 @@ function CharacterCreator({ onStart, onBack }: CharacterCreatorProps): React.Rea
             </form>
         </div>
       </div>
+      {showModeDialog && <GameModeDialog onSelect={handleModeSelect} onCancel={() => setShowModeDialog(false)} />}
       <style>{`
         .input-style {
             background-color: rgba(17, 24, 39, 0.6);

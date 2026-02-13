@@ -8,9 +8,11 @@ import { migrate } from '../services/migrationService';
 import { storageService } from '../services/storageService';
 import { getCityNeighborhoods } from '../data/names'; 
 import { baseCityStructure } from '../data/cityData'; 
-import { useAuth } from './AuthContext'; // Import Auth
+import { useAuth } from './AuthContext';
+import { useUI } from './UIContext'; // Importar UI para setar o modo visual
 
 type GameState = 'loading' | 'menu' | 'creator' | 'playing';
+type GenerationMode = 'robust' | 'concise';
 
 interface GameContextType {
     // State
@@ -26,6 +28,8 @@ interface GameContextType {
     savedLives: SaveData[];
     saveMessage: string;
     currentLifeId: string | null;
+    generationMode: GenerationMode;
+    setGenerationMode: (mode: GenerationMode) => void;
     
     // Notifications
     ageUpMessage: string | null;
@@ -38,8 +42,8 @@ interface GameContextType {
     saveGame: (isAutoSave?: boolean, statsOverride?: PlayerStats, logOverride?: GameTurn[], historyOverride?: Content[], lifeIdOverride?: string) => Promise<void>;
     loadGame: (id: string) => void;
     deleteLife: (id: string) => void;
-    startCustomGame: (data: CharacterCreationData) => Promise<void>;
-    quickStart: () => Promise<void>;
+    startCustomGame: (data: CharacterCreationData, mode: GenerationMode) => Promise<void>;
+    quickStart: (mode: GenerationMode) => Promise<void>;
     instantPlay: (saveData: SaveData) => void;
     importLife: (saveData: SaveData) => void;
     resetGame: () => void;
@@ -64,6 +68,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
     const [gameState, setGameState] = useState<GameState>('loading');
     const [savedLives, setSavedLives] = useState<SaveData[]>([]);
     const [saveMessage, setSaveMessage] = useState('');
+    const [generationMode, setGenerationMode] = useState<GenerationMode>('robust');
     
     // --- UI Notifications ---
     const [ageUpMessage, setAgeUpMessage] = useState<string | null>(null);
@@ -71,14 +76,14 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
     const [showMigrationNotification, setShowMigrationNotification] = useState(false);
 
     // --- Hooks ---
-    const { uploadSave, isAuthenticated } = useAuth(); // Hook into Auth
+    const { uploadSave, isAuthenticated } = useAuth();
+    const { toggleSummaryMode, isSummaryMode } = useUI(); // Acesso ao UI Context se precisar manipular visualmente
 
     // --- Initialization ---
     useEffect(() => {
         const lives = storageService.getSaves();
         let wereSavesMigrated = false;
         
-        // Only attempt migration if we actually have lives
         if (lives.length > 0) {
             const migratedLives = lives.reduce<SaveData[]>((acc, life) => {
                 try {
@@ -118,10 +123,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         historyOverride?: Content[],
         lifeIdOverride?: string
     ) => {
-        // CORRECTION: Prefer override ID to solve race conditions during initialization
         const targetId = lifeIdOverride || currentLifeId;
-        
-        // If we don't have an ID, we can't save.
         if (!targetId) return;
 
         const statsToSave = statsOverride || playerStats;
@@ -139,17 +141,14 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
             version: C.CURRENT_SAVE_VERSION,
         };
         
-        // Save Locally
         const success = storageService.saveLife(newSaveData);
         
-        // Sync to Cloud if Authenticated (Background)
         if (isAuthenticated) {
             const cloudSave = { ...newSaveData, history: [] }; 
             uploadSave(cloudSave).catch(err => console.error("Cloud Auto-save failed", err));
         }
         
         if (success) {
-            // Update local state immediately to reflect new save in menus
             setSavedLives(storageService.getSaves());
             if (!isAutoSave) {
                 setSaveMessage('Salvo!');
@@ -179,7 +178,14 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
     // --- Game Logic ---
 
     const handleStreamStart = useCallback(async (initialPrompt: string, baseStats: PlayerStats, lifeId: string, cityName: string = 'São Paulo') => {
-        const stream = sendMessageToGameStream([], initialPrompt, baseStats);
+        // INJECT STYLE INSTRUCTION
+        const styleInstruction = generationMode === 'concise' 
+            ? "MODO ATIVO: RESUMO. Gere apenas 1 parágrafo curto e direto ao ponto. Preencha 'eventSummary' com uma versão sintetizada." 
+            : "MODO ATIVO: ROBUSTO. Gere uma narrativa detalhada e envolvente.";
+        
+        const finalPrompt = `${initialPrompt}\n\n${styleInstruction}`;
+
+        const stream = sendMessageToGameStream([], finalPrompt, baseStats);
         
         let accumulatedText = "";
         let finalStats = { ...baseStats };
@@ -217,9 +223,6 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
                     }
 
                     finalStats = { ...baseStats, ...statChanges, city, currentNeighborhood };
-                    
-                    // CORREÇÃO CRÍTICA: Priorizar o nome definido pelo jogador (baseStats)
-                    // Se o jogador digitou um nome, e não é "Ninguém", mantemos ele.
                     if (baseStats.name && baseStats.name !== "Ninguém") {
                         finalStats.name = baseStats.name;
                     }
@@ -249,14 +252,12 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         }
 
         const newHistory = [
-            { role: 'user', parts: [{ text: initialPrompt }] } as Content, 
+            { role: 'user', parts: [{ text: finalPrompt }] } as Content, 
             { role: 'model', parts: [{ text: accumulatedText }] } as Content
         ];
         setHistory(newHistory);
         setIsLoading(false);
         
-        // CORREÇÃO CRÍTICA: Passar lifeId explicitamente para garantir que o save inicial ocorra
-        // mesmo que o state currentLifeId ainda esteja atualizando (stale closure).
         const firstTurnLog = [{ 
             speaker: 'system' as const, 
             text: accumulatedText, 
@@ -265,7 +266,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         }];
         
         saveGame(true, finalStats, firstTurnLog, newHistory, lifeId);
-    }, [saveGame]);
+    }, [saveGame, generationMode]);
 
     const handlePlayerAction = useCallback(async (action: string) => {
         if (isLoading) return;
@@ -283,12 +284,21 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
 
         let statsForAI = { ...playerStats };
         const chaosRoll = Math.random();
+        
+        // BUILD PROMPT WITH MODE INSTRUCTION
         let promptAction = action;
         if (chaosRoll < 0.20 && action.length > 5) {
              promptAction += " (Sistema: OBRIGATÓRIO: Gere um evento aleatório inesperado e dramático junto com a consequência desta ação.)";
         }
+        
+        // INJECT STYLE INSTRUCTION
+        const styleInstruction = generationMode === 'concise' 
+            ? "\n\n[INSTRUÇÃO: MODO RESUMO ATIVO. Gere um texto curto (1 parágrafo), direto ao ponto. Preencha 'eventSummary' com uma síntese lida do texto gerado.]" 
+            : "\n\n[INSTRUÇÃO: MODO ROBUSTO ATIVO. Gere um texto detalhado (3+ parágrafos), imersivo e literário. Preencha 'eventSummary' com uma síntese.]";
+        
+        const finalPrompt = promptAction + styleInstruction;
 
-        const stream = sendMessageToGameStream(history, promptAction, statsForAI);
+        const stream = sendMessageToGameStream(history, finalPrompt, statsForAI);
         
         let accumulatedText = "";
         let accumulatedSummary = "";
@@ -404,11 +414,18 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
             }
         }
         setIsLoading(false);
-    }, [gameLog, isLoading, currentLifeId, playerStats, history, saveGame]);
+    }, [gameLog, isLoading, currentLifeId, playerStats, history, saveGame, generationMode]);
 
     // --- Actions ---
 
-    const startCustomGame = useCallback(async (customData: CharacterCreationData) => {
+    const startCustomGame = useCallback(async (customData: CharacterCreationData, mode: GenerationMode) => {
+        setGenerationMode(mode); // Set mode globally
+        
+        // Sync UI summary mode with game mode
+        // Note: We can't strictly force the UIContext here without more wiring, 
+        // but the prompt instruction is handled above. 
+        // Ideally, if mode is concise, isSummaryMode should be true.
+        
         const newLifeId = Date.now().toString();
         setCurrentLifeId(newLifeId);
         setGameState('playing');
@@ -447,11 +464,12 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         OBRIGATÓRIO: Gere no JSON de resposta (em statChanges.relationships) os pais do personagem (Pai e Mãe).
         `;
         
-        // Pass lifeId explicitly to override any stale state closures
         await handleStreamStart(initialPrompt, initialStats, newLifeId, customData.city);
     }, [handleStreamStart]);
 
-    const quickStart = useCallback(async () => {
+    const quickStart = useCallback(async (mode: GenerationMode) => {
+        setGenerationMode(mode);
+        
         const newLifeId = Date.now().toString();
         setCurrentLifeId(newLifeId);
         setGameState('playing');
@@ -478,6 +496,9 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         setGameLog(migratedData.gameLog);
         setHistory(migratedData.history as Content[]);
         
+        // Default to robust on load unless we save the mode in SaveData (future feature)
+        setGenerationMode('robust'); 
+        
         setGameState('playing');
         setIsGameOver(false);
         setTombstone(null);
@@ -494,6 +515,8 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         setPlayerStats(savedData.playerStats);
         setGameLog(savedData.gameLog);
         setHistory(savedData.history as Content[]);
+        setGenerationMode('robust'); // Default on load
+        
         setGameState('playing');
         setIsGameOver(false);
         setTombstone(null);
@@ -528,7 +551,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         setGameLog([]);
     }, []);
 
-    // --- Granular Data Fetching Wrappers ---
+    // ... (rest of fetch wrappers same as before) ...
     const wrapperFetchNeighborhoodData = useCallback(async (neighborhoodId: string, category: keyof typeof fetchNeighborhoodData) => {
         const targetNeighborhood = playerStats.city.find(n => n.id === neighborhoodId);
         if (!targetNeighborhood) return;
@@ -563,6 +586,7 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         playerStats, setPlayerStats,
         gameLog, history, isLoading, isGameOver, tombstone,
         savedLives, saveMessage, currentLifeId,
+        generationMode, setGenerationMode,
         ageUpMessage, eventNotification, showMigrationNotification, setShowMigrationNotification,
         handlePlayerAction, saveGame, loadGame, deleteLife, startCustomGame, quickStart, instantPlay, importLife, resetGame, goToMenu,
         fetchNeighborhoodData: wrapperFetchNeighborhoodData,

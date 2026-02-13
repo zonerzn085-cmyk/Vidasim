@@ -441,8 +441,6 @@ function GameContent(): React.ReactElement {
             {activeModal === 'npc_interaction' && modalData && (
                 <InteractionDialog 
                     npc={modalData} 
-                    playerStats={playerStats}
-                    history={history}
                     onConfirm={(act) => { handlePlayerAction(act); closeModal(); }} 
                     onClose={closeModal}
                     onOpenChat={() => handleOpenNpcChat(modalData)}
@@ -478,12 +476,12 @@ function GameContent(): React.ReactElement {
 export default function App() {
     return (
         <AuthProvider>
-            <GameProvider>
-                <UIProvider>
+            <UIProvider>
+                <GameProvider>
                     <LayoutBackground />
                     <GameContent />
-                </UIProvider>
-            </GameProvider>
+                </GameProvider>
+            </UIProvider>
         </AuthProvider>
     );
 }

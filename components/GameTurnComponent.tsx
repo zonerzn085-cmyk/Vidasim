@@ -25,20 +25,21 @@ const parseText = (text: string) => {
 
 const getSmartSummary = (text: string) => {
     if (!text) return "";
-    // Try to get the first paragraph
-    const firstParagraph = text.split('\n')[0];
-    if (firstParagraph.length > 20 && firstParagraph.length < 250) return firstParagraph;
     
-    // If first paragraph is huge or tiny, try first 2 sentences
+    // Fallback: Baseado em frases se não houver parágrafos claros
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
     if (sentences.length > 0) {
+        // Pega até 4 frases ou 450 caracteres, o que for menor/melhor
+        const fourSentences = sentences.slice(0, 4).join(' ');
+        if (fourSentences.length < 450) return fourSentences;
+        
+        // Se 4 frases for gigante, tenta 2
         const twoSentences = sentences.slice(0, 2).join(' ');
-        if (twoSentences.length < 250) return twoSentences;
-        return sentences[0]; // Just first sentence
+        return twoSentences;
     }
     
-    // Fallback: Smart slice
-    if (text.length > 150) return text.slice(0, 150).trim() + "...";
+    // 3. Último recurso: Corte simples maior
+    if (text.length > 350) return text.slice(0, 350).trim() + "...";
     return text;
 };
 
@@ -58,8 +59,7 @@ const GameTurnComponent: React.FC<GameTurnProps> = ({ turn }) => {
     // Summary Logic
     const shouldShowSummary = !isPlayer && isSummaryMode;
     
-    // If explicit summary exists and is not empty/too short, use it. 
-    // Otherwise derive a smart summary from the full text.
+    // Prioritize explicit summary from AI, then fall back to smart truncation
     const displayText = shouldShowSummary 
         ? (turn.summary && turn.summary.length > 10 ? turn.summary : getSmartSummary(safeText))
         : safeText;
@@ -78,7 +78,7 @@ const GameTurnComponent: React.FC<GameTurnProps> = ({ turn }) => {
                 ${isPlayer 
                     ? 'bg-teal-600/90 text-white rounded-br-none border-teal-500/30 shadow-teal-900/20' 
                     : shouldShowSummary
-                        ? 'bg-gray-900/80 text-teal-100/90 rounded-bl-none border-teal-500/20 shadow-black/20' // Removed italic to improve readability
+                        ? 'bg-gray-900/80 text-teal-100/90 rounded-bl-none border-teal-500/20 shadow-black/20' 
                         : 'bg-gray-800/90 text-gray-100 rounded-bl-none border-gray-700/50 shadow-black/20'
                 }
             `}>

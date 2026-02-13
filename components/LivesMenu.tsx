@@ -5,13 +5,14 @@ import { UserIcon, BriefcaseIcon, BanknotesIcon, TrashIcon, ArrowRightIcon, Arro
 import { arthurLegendarySave } from '../data/legendarySave';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
+import GameModeDialog from './GameModeDialog'; // Import new component
 
 interface LivesMenuProps {
   savedLives: SaveData[];
   onLoad: (id: string) => void;
   onDelete: (id: string) => void;
   onNewGame: () => void;
-  onQuickStart: () => void;
+  onQuickStart: (mode: 'robust' | 'concise') => void;
   onImport: (saveData: SaveData) => void;
   onInstantPlay: (saveData: SaveData) => void;
   showMigrationNotification: boolean;
@@ -26,6 +27,7 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isAuthenticated, logout, syncSaves, uploadSave, isSyncing } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showModeDialog, setShowModeDialog] = useState(false); // State for mode selection
   
   const mostRecentSave = savedLives.length > 0 ? savedLives[savedLives.length - 1] : null;
   const otherSaves = savedLives.length > 0 ? savedLives.slice(0, -1).reverse() : [];
@@ -98,6 +100,16 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
   const handleSync = async () => {
       await syncSaves();
       window.location.reload(); 
+  };
+
+  // Trigger quick start with mode selection
+  const handleQuickStartClick = () => {
+      setShowModeDialog(true);
+  };
+
+  const handleModeSelected = (mode: 'robust' | 'concise') => {
+      setShowModeDialog(false);
+      onQuickStart(mode);
   };
 
   // Performance Optimization: Removed bg-gray-950 to allow LayoutBackground to show through without overdraw
@@ -186,7 +198,7 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
                 </button>
 
                 <div className="flex flex-col gap-4 h-64 md:h-80">
-                    <button onClick={onQuickStart} className="flex-1 bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-900/60 rounded-3xl p-6 flex flex-col justify-center items-start transition-all group relative overflow-hidden">
+                    <button onClick={handleQuickStartClick} className="flex-1 bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-900/60 rounded-3xl p-6 flex flex-col justify-center items-start transition-all group relative overflow-hidden">
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 group-hover:opacity-40 transition-opacity">
                             <BoltIcon className="w-24 h-24 text-indigo-400" />
                         </div>
@@ -301,6 +313,7 @@ function LivesMenu({ savedLives, onLoad, onDelete, onNewGame, onQuickStart, onIm
       </footer>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showModeDialog && <GameModeDialog onSelect={handleModeSelected} onCancel={() => setShowModeDialog(false)} />}
     </div>
   );
 }
