@@ -49,7 +49,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Pr
       const msg = error?.message || "";
       
       // 429 (Too Many Requests) or 503 (Service Unavailable)
-      const isTransient = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("503") || msg.includes("UNAVAILABLE");
+      const isTransient = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("503") || msg.includes("UNAVAILABLE") || msg.includes("fetch");
       
       if (attempts > retries) {
         console.error(`Gemini API call failed after ${attempts} attempt(s).`, error);
@@ -292,7 +292,7 @@ function normalizeAiStats(rawStats: any): any {
 
 export async function* sendMessageToGameStream(history: Content[], action: string, currentStats: PlayerStats) {
     if (!API_KEY || API_KEY === "MISSING_KEY") {
-        yield { type: 'text', payload: "⚠️ ERRO DE CONFIGURAÇÃO: API Key não encontrada. Verifique as variáveis de ambiente no Vercel." };
+        yield { type: 'error', payload: "⚠️ ERRO DE CONFIGURAÇÃO: API Key não encontrada." };
         return;
     }
 
@@ -343,27 +343,21 @@ export async function* sendMessageToGameStream(history: Content[], action: strin
     }
 
     if (connectionError || !stream) {
-        yield { type: 'text', payload: "⚠️ O sistema de IA está temporariamente indisponível. Por favor, tente novamente em alguns instantes." };
+        yield { type: 'error', payload: "⚠️ O sistema de IA está temporariamente indisponível." };
         return;
     }
 
     let isCollectingJSON = false;
     let jsonBuffer = "";
-    let accumulatedText = "";
 
     try {
         for await (const chunk of stream) {
             const text = chunk.text;
             if (!text) continue;
 
-            // Handle Choices Tag specifically to keep them out of main text if possible or format them
-            // We usually want choices in the JSON or handled separately, but if they appear in text, we filter.
             if (text.includes("|||CHOICES:")) {
                 const parts = text.split("|||CHOICES:");
                 if (parts[0]) yield { type: 'text', payload: parts[0] };
-                // We ignore the actual choices text part here, expecting them in JSON or we parse them later?
-                // Actually, let's just let choices flow into JSON buffer if they are near it, or ignore.
-                // The prompt instruction asks for CHOICES tag. Let's try to extract.
                 continue; 
             }
 
@@ -371,7 +365,6 @@ export async function* sendMessageToGameStream(history: Content[], action: strin
                 const parts = text.split("|||DATA_START|||");
                 
                 if (parts[0]) {
-                    // Check for trailing choices in the text part
                     const textPart = parts[0].replace(/\|\|\|CHOICES:.*$/, ''); 
                     yield { type: 'text', payload: textPart };
                 }
@@ -386,9 +379,10 @@ export async function* sendMessageToGameStream(history: Content[], action: strin
                 yield { type: 'text', payload: text };
             }
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Stream Iteration Error", e);
-        yield { type: 'text', payload: "\n[Conexão interrompida durante a resposta.]" };
+        // Important: Yield an explicit error type so GameContext can discard this failed turn
+        yield { type: 'error', payload: "\n[Conexão interrompida durante a resposta.]" };
         return;
     }
 
@@ -396,19 +390,15 @@ export async function* sendMessageToGameStream(history: Content[], action: strin
     if (jsonBuffer.trim()) {
         try {
             let cleanJson = jsonBuffer.replace(/```json/g, "").replace(/```/g, "").trim();
-            // Try to find the last valid closing brace if there is garbage
             const lastBrace = cleanJson.lastIndexOf('}');
             if (lastBrace !== -1) cleanJson = cleanJson.substring(0, lastBrace + 1);
 
             const parsedData = JSON.parse(cleanJson);
             
-            // NORMALIZE DATA: Map 'optimized' AI keys back to 'standard' App keys
-            // This fixes the issue where AI returns 'vitals.hp' instead of 'health'
             if (parsedData.statChanges) {
                 parsedData.statChanges = normalizeAiStats(parsedData.statChanges);
             }
 
-            // Sanitize
             if (parsedData.statChanges && !parsedData.statChanges.memories) {
                 parsedData.statChanges.memories = []; 
             }
@@ -416,7 +406,8 @@ export async function* sendMessageToGameStream(history: Content[], action: strin
             yield { type: 'stats', payload: parsedData };
         } catch (e) {
             console.error("JSON Parsing Error", e);
-            console.log("Raw Buffer:", jsonBuffer);
+            // If JSON fails, it's also a turn failure because state didn't update
+            yield { type: 'error', payload: "Erro ao processar dados vitais." };
         }
     }
 }

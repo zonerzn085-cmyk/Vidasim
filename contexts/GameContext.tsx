@@ -309,10 +309,31 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
         let finalStats = { ...statsForAI };
         let isGameOverResult = false;
         let tombstoneResult = null;
+        let turnSuccess = false; // Flag to track if we received stats successfully
 
         try {
             for await (const update of stream) {
+                if (update.type === 'error') {
+                    // Critical Error Handling
+                    // If we receive an error signal, stop processing and allow retry.
+                    setGameLog(prev => {
+                        const newLog = [...prev];
+                        // Remove pending system turn to look cleaner, or update it with error text
+                        newLog.pop(); 
+                        newLog.push({ 
+                            speaker: 'system', 
+                            text: "⚠️ Erro de conexão. A resposta da IA foi interrompida. Por favor, tente sua ação novamente.",
+                            date: { day: oldStats.day, month: oldStats.month, year: oldStats.year }
+                        });
+                        return newLog;
+                    });
+                    // DO NOT UPDATE HISTORY. Return immediately to safely reset state.
+                    setIsLoading(false);
+                    return; 
+                }
+
                 if (update.type === 'stats') {
+                    turnSuccess = true; // Mark as successful only if we got valid stats
                     const { statChanges, isGameOver, tombstone, eventSummary } = update.payload;
                     if (eventSummary) accumulatedSummary = eventSummary;
 
@@ -381,42 +402,66 @@ export function GameProvider({ children }: { children?: React.ReactNode }) {
             }
         } catch (e) {
             console.error("Stream loop error", e);
-             setGameLog(prev => [...prev, { speaker: 'system', text: "Ocorreu um erro na conexão com a realidade. Tente novamente." }]);
+            // Catch generic stream errors here too just in case
+            turnSuccess = false;
         }
 
-        const newHistory = [...history, { role: 'user', parts: [{ text: `Ação: "${promptAction}"\nEstado: ${JSON.stringify(finalStats)}` }] } as Content, { role: 'model', parts: [{ text: accumulatedText }]} as Content];
-        setHistory(newHistory);
+        // HISTORY PROTECTION
+        // Only update history if the turn was successful (received stats).
+        // If we didn't receive stats, we assume the turn failed/crashed mid-way.
+        if (turnSuccess) {
+            const newHistory = [...history, { role: 'user', parts: [{ text: `Ação: "${promptAction}"\nEstado: ${JSON.stringify(finalStats)}` }] } as Content, { role: 'model', parts: [{ text: accumulatedText }]} as Content];
+            setHistory(newHistory);
 
-        if (finalStats.age > oldAge) {
-            setAgeUpMessage(`Você fez ${finalStats.age} anos!`);
-            setTimeout(() => setAgeUpMessage(null), 2500);
-        }
+            if (finalStats.age > oldAge) {
+                setAgeUpMessage(`Você fez ${finalStats.age} anos!`);
+                setTimeout(() => setAgeUpMessage(null), 2500);
+            }
 
-        const oldEventId = oldStats.currentNeighborhood?.currentEvent?.id;
-        const newEvent = finalStats.currentNeighborhood?.currentEvent;
-        if (newEvent && newEvent.id !== oldEventId) {
-            setEventNotification(newEvent.name);
-            setTimeout(() => setEventNotification(null), 4000);
-        }
-        
-        if (isGameOverResult && tombstoneResult) {
-            setIsGameOver(true);
-            setTombstone(tombstoneResult);
-            deleteLife(currentLifeId!);
-        } else {
-            const finalLogForSave = [...gameLog, playerTurn, { speaker: 'system', text: accumulatedText, summary: accumulatedSummary, date: { day: finalStats.day, month: finalStats.month, year: finalStats.year } } as GameTurn];
-            saveGame(true, finalStats, finalLogForSave, newHistory);
+            const oldEventId = oldStats.currentNeighborhood?.currentEvent?.id;
+            const newEvent = finalStats.currentNeighborhood?.currentEvent;
+            if (newEvent && newEvent.id !== oldEventId) {
+                setEventNotification(newEvent.name);
+                setTimeout(() => setEventNotification(null), 4000);
+            }
             
-            const currentYear = finalStats.year;
-            const lastAnalysisYear = finalStats.playerProfile?.lastUpdatedYear ?? 0;
-            if (currentYear > 0 && currentYear > lastAnalysisYear && currentYear % 5 === 0) {
-                const analysis = await runAiDirectorAnalysis(newHistory, finalStats);
-                if (analysis) {
-                    const newProfile: PlayerProfile = { ...analysis, lastUpdatedYear: currentYear };
-                    setPlayerStats(prev => ({ ...prev, playerProfile: newProfile }));
+            if (isGameOverResult && tombstoneResult) {
+                setIsGameOver(true);
+                setTombstone(tombstoneResult);
+                deleteLife(currentLifeId!);
+            } else {
+                const finalLogForSave = [...gameLog, playerTurn, { speaker: 'system', text: accumulatedText, summary: accumulatedSummary, date: { day: finalStats.day, month: finalStats.month, year: finalStats.year } } as GameTurn];
+                saveGame(true, finalStats, finalLogForSave, newHistory);
+                
+                const currentYear = finalStats.year;
+                const lastAnalysisYear = finalStats.playerProfile?.lastUpdatedYear ?? 0;
+                if (currentYear > 0 && currentYear > lastAnalysisYear && currentYear % 5 === 0) {
+                    const analysis = await runAiDirectorAnalysis(newHistory, finalStats);
+                    if (analysis) {
+                        const newProfile: PlayerProfile = { ...analysis, lastUpdatedYear: currentYear };
+                        setPlayerStats(prev => ({ ...prev, playerProfile: newProfile }));
+                    }
                 }
             }
+        } else {
+            // Turn FAILED. Remove the broken system message so user can try again easily.
+            setGameLog(prev => {
+                const newLog = [...prev];
+                // Check if last message is the broken system message
+                if (newLog.length > 0 && newLog[newLog.length - 1].speaker === 'system') {
+                    newLog.pop(); // Remove system message
+                    // Optional: You could also pop the player message if you want them to retype,
+                    // but keeping it reminds them what they tried.
+                    newLog.push({ 
+                        speaker: 'system', 
+                        text: "⚠️ [Erro de Conexão] A resposta da IA foi incompleta. Seu progresso não foi salvo para evitar corrupção. Por favor, tente a ação novamente.", 
+                        date: { day: oldStats.day, month: oldStats.month, year: oldStats.year }
+                    });
+                }
+                return newLog;
+            });
         }
+        
         setIsLoading(false);
     }, [gameLog, isLoading, currentLifeId, playerStats, history, saveGame, generationMode]);
 

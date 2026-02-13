@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { PlayerStats } from '../types';
 import { 
-    XMarkIcon, 
     HeartIcon, 
     BriefcaseIcon, 
     ShoppingCartIcon, 
@@ -22,8 +21,7 @@ import {
     AcademicCapIcon,
     BuildingLibraryIcon,
     MusicalNoteIcon,
-    GlobeAltIcon,
-    PlayCircleIcon
+    GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import InputDialog from './InputDialog';
 import HobbyActionsModal from './HobbyActionsModal';
@@ -221,144 +219,81 @@ function SmartPhoneMenu(props: SmartPhoneMenuProps): React.ReactElement {
                     <SubMenu title="Streaming de Música" onClose={() => setCurrentApp(null)}>
                         <div className="bg-gradient-to-br from-red-600 to-black p-5 rounded-2xl mb-4 text-white shadow-lg flex items-center justify-between animate-pop-in border border-red-500/30">
                             <div>
-                                <p className="font-black text-xl tracking-tight">YouTube Music</p>
-                                <p className="text-xs opacity-70 mt-1 font-medium">Acesso Ilimitado • Sem Bloqueios</p>
+                                <p className="font-black text-xl tracking-tighter">Rádio Nebulosa</p>
+                                <p className="text-xs opacity-80">Sintonize no Vibe</p>
                             </div>
-                            <div className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center shadow-md">
-                                <PlayCircleIcon className="w-6 h-6" />
-                            </div>
+                            <MusicalNoteIcon className="w-8 h-8 opacity-80" />
                         </div>
-                        
-                        <div className="p-3 bg-gray-900/50 border border-gray-700 rounded-xl text-xs text-gray-400 mb-4 text-center">
-                            Abre o player oficial em nova aba para garantir compatibilidade total.
+                        <div className="space-y-2 px-2">
+                            <p className="text-sm text-gray-400 text-center italic">
+                                Use o player na barra superior (YouTube Music) para controlar o áudio do jogo.
+                            </p>
                         </div>
-
-                        <ActionRow 
-                            icon={<GlobeAltIcon className="w-5 h-5"/>} 
-                            label="Abrir YouTube Music" 
-                            subtitle="Toque qualquer música do mundo" 
-                            onClick={() => window.open('https://music.youtube.com', '_blank')} 
-                            delay={getDelay()} 
-                        />
-                        
-                        <div className="my-4 h-px bg-gray-800"></div>
-                        <p className="text-xs text-gray-500 font-bold uppercase mb-2 px-1">Ações de Roleplay (Vibe)</p>
-
-                        <ActionRow 
-                            icon={<MusicalNoteIcon className="w-5 h-5"/>} 
-                            label="Ouvir Lo-fi" 
-                            subtitle="Relaxar e reduzir estresse" 
-                            onClick={() => handleAction("Colocar fones de ouvido e ouvir música lo-fi para relaxar")} 
-                            delay={getDelay()} 
-                        />
-                         <ActionRow 
-                            icon={<MusicalNoteIcon className="w-5 h-5"/>} 
-                            label="Música Focada" 
-                            subtitle="Aumentar produtividade" 
-                            onClick={() => handleAction("Ouvir playlist de foco para estudar/trabalhar")} 
-                            delay={getDelay()} 
-                        />
                     </SubMenu>
                 );
-          default:
-              return null;
+            default:
+                return null;
       }
   };
 
-  const mainApps = [
-      { label: "Diário", gradient: "bg-amber-500", icon: <BookOpenIcon/>, onClick: () => { openPanel('memories'); onClose(); } },
-      { label: "Saúde", gradient: "bg-red-500", icon: <HeartIcon/>, onClick: () => setCurrentApp('Health') },
-      { label: "Carreira", gradient: "bg-blue-500", icon: <BriefcaseIcon/>, onClick: () => setCurrentApp('Jobs') },
-      { label: "Banco", gradient: "bg-purple-600", icon: <BanknotesIcon/>, onClick: () => setCurrentApp('Bank') },
-      { label: "Lazer", gradient: "bg-orange-500", icon: <TrophyIcon/>, onClick: () => setCurrentApp('Hobbies') },
-      { label: "Mapa", gradient: "bg-emerald-500", icon: <MapIcon/>, onClick: () => { props.onOpenCityMap(); onClose(); } },
-      { label: "Música", gradient: "bg-pink-600", icon: <MusicalNoteIcon/>, onClick: () => setCurrentApp('Music') },
-  ];
-
-  const dockApps = [
-      { label: "Telefone", gradient: "bg-green-500", icon: <DevicePhoneMobileIcon/>, onClick: () => { props.onOpenRelationships(); onClose(); } },
-      { label: "Chat", gradient: "bg-teal-500", icon: <ChatBubbleLeftRightIcon/>, onClick: () => { props.onOpenRelationships(); onClose(); }, notification: 1 },
-      { label: "Contatos", gradient: "bg-gray-500", icon: <UserGroupIcon/>, onClick: () => { props.onOpenRelationships(); onClose(); } },
-      ...(playerStats.criminality > 10 ? [{ label: "Onion", gradient: "bg-gray-800 border-red-500", icon: <ShieldExclamationIcon className="text-red-500"/>, onClick: () => setCurrentApp('DarkWeb') }] : []),
-  ];
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4">
-        {/* Device Frame */}
-        <div className="w-full h-full sm:w-[380px] sm:h-[85vh] bg-black sm:rounded-[3rem] sm:border-[8px] sm:border-gray-800 shadow-2xl relative overflow-hidden flex flex-col ring-1 ring-white/10">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+        <div 
+            className="w-full max-w-sm h-[80vh] bg-gray-950 border-4 border-gray-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col"
+            onClick={e => e.stopPropagation()}
+        >
             
-            {/* Wallpaper */}
-            <div className="absolute inset-0 z-0">
-                <div className="absolute inset-0 bg-gradient-to-b from-blue-900/40 via-purple-900/40 to-black"></div>
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+            {/* Notch / Status Bar */}
+            <div className="h-8 bg-black w-full flex justify-center items-end pb-1 z-20 absolute top-0 left-0 pointer-events-none">
+                <div className="w-24 h-4 bg-black rounded-b-2xl"></div>
             </div>
             
-            {/* Notch/Status Bar Area */}
-            <div className="pt-2 px-6 flex justify-between items-center text-xs font-bold text-white relative z-20 h-8 sm:mt-2 flex-shrink-0">
-                <span>{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                <div className="flex gap-1.5 items-center">
-                    <span className="text-[10px] text-gray-300">5G</span>
-                    <div className="flex gap-0.5 items-end h-2.5">
-                        <div className="w-1 h-1.5 bg-white rounded-sm"></div>
-                        <div className="w-1 h-2 bg-white rounded-sm"></div>
-                        <div className="w-1 h-2.5 bg-white rounded-sm"></div>
-                    </div>
-                    <div className="w-5 h-2.5 border border-white/50 rounded-sm ml-1 relative">
-                        <div className="absolute inset-0.5 bg-white rounded-sm w-[70%]"></div>
-                    </div>
+            {/* Screen Content */}
+            <div className="flex-grow pt-10 pb-8 px-4 overflow-hidden relative">
+                {/* Background Wallpaper */}
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop')] bg-cover bg-center opacity-30"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-950/50 to-gray-950"></div>
+
+                <div className="relative z-10 h-full flex flex-col">
+                    
+                    {currentApp ? (
+                        renderAppContent()
+                    ) : (
+                        <div className="grid grid-cols-4 gap-4 mt-4 content-start">
+                            <AppIcon icon={<HeartIcon/>} label="Saúde" gradient="bg-gradient-to-br from-red-500 to-pink-600" onClick={() => setCurrentApp('Health')} delay={50} />
+                            <AppIcon icon={<BriefcaseIcon/>} label="Trabalho" gradient="bg-gradient-to-br from-blue-500 to-indigo-600" onClick={() => setCurrentApp('Jobs')} delay={100} />
+                            <AppIcon icon={<BanknotesIcon/>} label="Banco" gradient="bg-gradient-to-br from-green-500 to-emerald-600" onClick={() => setCurrentApp('Bank')} delay={150} />
+                            <AppIcon icon={<ShoppingCartIcon/>} label="Shop" gradient="bg-gradient-to-br from-orange-500 to-amber-600" onClick={() => { props.onOpenShopping(); onClose(); }} delay={200} />
+                            
+                            <AppIcon icon={<TrophyIcon/>} label="Hobbies" gradient="bg-gradient-to-br from-purple-500 to-violet-600" onClick={() => setCurrentApp('Hobbies')} delay={250} />
+                            <AppIcon icon={<MusicalNoteIcon/>} label="Música" gradient="bg-gradient-to-br from-rose-500 to-red-600" onClick={() => setCurrentApp('Music')} delay={300} />
+                            
+                            {playerStats.hobbies.some(h => h.toLowerCase().includes('hacking') || h.toLowerCase().includes('crime')) && (
+                                <AppIcon icon={<GlobeAltIcon/>} label="DarkWeb" gradient="bg-gradient-to-br from-gray-700 to-gray-900 border-red-500/50" onClick={() => setCurrentApp('DarkWeb')} delay={350} />
+                            )}
+                        </div>
+                    )}
+
+                    {/* Dock */}
+                    {!currentApp && (
+                        <div className="mt-auto bg-white/10 backdrop-blur-md rounded-[1.5rem] p-3 flex justify-around items-center border border-white/5 mx-2">
+                            <AppIcon icon={<DevicePhoneMobileIcon/>} label="" gradient="bg-green-500" onClick={() => {}} isDock={true} />
+                            <AppIcon icon={<ChatBubbleLeftRightIcon/>} label="" gradient="bg-blue-500" onClick={() => { props.onOpenRelationships(); onClose(); }} isDock={true} />
+                            <AppIcon icon={<MapIcon/>} label="" gradient="bg-yellow-500" onClick={() => { props.onOpenCityMap(); onClose(); }} isDock={true} />
+                            <AppIcon icon={<GlobeAltIcon/>} label="" gradient="bg-gray-500" onClick={() => {}} isDock={true} />
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Main Screen Content */}
-            <div className="flex-grow flex flex-col relative z-10 px-5 pb-6 pt-8 overflow-y-auto no-scrollbar">
-                {currentApp ? (
-                    renderAppContent()
-                ) : (
-                    <>
-                        {/* Clock Widget */}
-                        <div className="mb-8 text-center animate-fade-in-up flex-shrink-0">
-                            <div className="text-5xl sm:text-6xl font-thin text-white drop-shadow-lg tracking-tighter">
-                                {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </div>
-                            <div className="text-sm font-medium text-gray-200 mt-1 drop-shadow-md">
-                                {["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][new Date().getDay()]}, {new Date().getDate()} de {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][new Date().getMonth()]}
-                            </div>
-                            <div className="mt-2 text-xs bg-black/20 inline-block px-3 py-1 rounded-full backdrop-blur-sm text-gray-300 border border-white/5">
-                                {playerStats.currentWeather} • {playerStats.city[0]?.name || "Cidade"}
-                            </div>
-                        </div>
-
-                        {/* App Grid */}
-                        <div className="grid grid-cols-4 gap-x-2 gap-y-4 sm:gap-y-6 mb-auto">
-                            {mainApps.map((app, index) => (
-                                <AppIcon 
-                                    key={index} 
-                                    {...app} 
-                                    delay={index * 50} 
-                                />
-                            ))}
-                        </div>
-
-                        {/* Dock (Glassmorphism) */}
-                        <div className="mt-4 bg-white/10 backdrop-blur-xl rounded-[2rem] p-3 flex justify-around items-center border border-white/5 mx-1 flex-shrink-0">
-                            {dockApps.map((app, index) => (
-                                <AppIcon 
-                                    key={index} 
-                                    {...app} 
-                                    delay={300 + (index * 50)} 
-                                    isDock={true}
-                                />
-                            ))}
-                        </div>
-                    </>
-                )}
-            </div>
-
-            {/* Home Indicator */}
-            <div className="h-1.5 w-32 bg-white/80 rounded-full mx-auto mb-2 absolute bottom-2 left-1/2 -translate-x-1/2 z-20 shadow-sm pointer-events-none"></div>
+            {/* Home Bar */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/20 rounded-full z-20 cursor-pointer" onClick={() => { if (currentApp) setCurrentApp(null); else onClose(); }}></div>
         </div>
-
-        {/* Modals Logic */}
+        
+        {/* Modals triggered from phone */}
         {activeModal === 'createCompany' && <InputDialog title="Fundar Empresa" prompt="Nome da sua nova empresa:" buttonText="Registrar" onConfirm={handleModalConfirm('createCompany')} onClose={() => setActiveModal(null)} />}
         {activeModal === 'createGang' && <InputDialog title="Formar Gangue" prompt="Nome da organização:" buttonText="Criar" onConfirm={handleModalConfirm('createGang')} onClose={() => setActiveModal(null)} />}
         {activeHobby && <HobbyActionsModal hobby={activeHobby} onAction={(act) => { onPlayerAction(act); setActiveModal(null); onClose(); }} onClose={() => setActiveModal(null)} />}
